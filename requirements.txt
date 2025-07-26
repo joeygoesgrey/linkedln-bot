@@ -1,0 +1,9 @@
+selenium
+requests
+webdriver-manager
+python-dotenv
+google-generativeai
+beautifulsoup4
+scrapy
+scrapy-selenium
+scrapy-playwright
