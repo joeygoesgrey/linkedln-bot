@@ -386,9 +386,14 @@ class LinkedInInteraction:
             self.random_delay(1, 2)
                 
             # Try to click the Post button with fallbacks
-            if not self._click_element_with_fallback(post_button, "Post"):
-                # Element may have gone stale if the DOM updated; re-locate and retry
+            # 1) Re-find just-in-time to avoid staleness
+            post_button = self._find_post_button()
+            if post_button and self._click_element_with_fallback(post_button, "Post"):
+                pass
+            else:
+                # 2) Re-locate and retry a couple of times
                 logging.info("Re-locating 'Post' button after click failure and retrying")
+                clicked = False
                 for _ in range(2):
                     self.random_delay(1, 2)
                     post_button = self._find_post_button()
@@ -399,8 +404,19 @@ class LinkedInInteraction:
                     except Exception:
                         pass
                     if self._click_element_with_fallback(post_button, "Post"):
+                        clicked = True
                         break
-                else:
+                # 3) Attempt keyboard submit (Ctrl/Cmd + Enter)
+                if not clicked:
+                    logging.info("Trying keyboard submit (Ctrl/Cmd + Enter)")
+                    if self._submit_via_keyboard():
+                        clicked = True
+                # 4) Try JS-based search and click inside the composer
+                if not clicked:
+                    logging.info("Trying JS-based Post button click")
+                    if self._click_post_via_js():
+                        clicked = True
+                if not clicked:
                     logging.error("Failed to click the Post button after several attempts")
                     return False
             
@@ -493,48 +509,49 @@ class LinkedInInteraction:
         Returns:
             WebElement or None: The found button or None if not found.
         """
+        # First, scope to the composer modal to avoid clicking unrelated buttons
+        modal_roots = [
+            "//div[@role='dialog' and contains(@class, 'share-creation-state')]",
+            "//div[@role='dialog' and contains(@class, 'share-box-modal')]",
+            "//div[contains(@class, 'share-box-modal')]",
+        ]
+        composer = None
+        for root in modal_roots:
+            try:
+                composer = WebDriverWait(self.driver, 2).until(
+                    EC.presence_of_element_located((By.XPATH, root))
+                )
+                break
+            except Exception:
+                continue
+
+        # Candidate selectors for the Post button (scoped under composer when available)
         post_button_selectors = [
-            # CSS Selectors - often more efficient than XPath
-            "button.share-actions__primary-action",  # Primary action button by class
-            "button[aria-label*='Post']",  # Buttons with Post in aria-label
-            "footer button.share-actions__primary-action",  # Post button in footer
-            "div.share-box-footer button",  # Any button in the footer
-            
-            # Text-based XPath selectors
-            "//button[text()='Post']",  # Exact button text
-            "//button[contains(text(), 'Post')]",  # Button containing text
-            "//span[text()='Post']/parent::button",  # Span with text inside button
-            "//span[contains(text(), 'Post')]/parent::button",  # Span containing text
-            
-            # Class and attribute based XPath selectors
-            "//button[contains(@class, 'share-actions__primary-action')]",  # Primary action class
-            "//button[contains(@aria-label, 'Post')]",  # Aria label contains Post
-            "//div[contains(@class, 'share-box-footer')]//button",  # Any button in footer
-            "//div[contains(@class, 'share-box-footer')]//button[text()='Post']",  # Button in footer with text
-            
-            # Enabled state selectors
-            "//button[contains(@class, 'share-actions__primary-action')][not(@disabled)]",  # Non-disabled primary
-            "//button[@disabled='false']",  # Explicitly enabled button
-            "//button[not(@disabled)]",  # Any non-disabled button
-            
-            # Button with specific positioning attributes
-            "//div[contains(@class, 'share-creation-state')]//button[not(@disabled)]",  # Non-disabled in creation state
-            "//footer//button[not(@disabled)]",  # Non-disabled in footer
-            
-            # Generic button in post area
-            "//div[contains(@class, 'share-creation-state')]//button"  # Any button in creation state
+            "//button[normalize-space(.)='Post']",
+            "//span[normalize-space(.)='Post']/parent::button",
+            "//button[contains(@aria-label, 'Post')]",
+            "//button[contains(@class, 'share-actions__primary-action')]",
+            "//footer//button[contains(@class, 'artdeco-button') and not(@disabled)]",
         ]
         
         # First try looking for explicitly clickable buttons
         for selector in post_button_selectors:
             try:
                 logging.info(f"Trying post button selector: {selector}")
-                is_xpath = selector.startswith("//")
-                by_method = By.XPATH if is_xpath else By.CSS_SELECTOR
-                
-                button = WebDriverWait(self.driver, 5).until(
-                    EC.element_to_be_clickable((by_method, selector))
-                )
+                # Query either within composer or globally
+                if selector.startswith("//"):
+                    by_method = By.XPATH
+                    query = selector if not composer else "." + selector[1:]
+                    context = composer if composer else self.driver
+                    button = WebDriverWait(context, 5).until(
+                        EC.element_to_be_clickable((By.XPATH, query))
+                    )
+                else:
+                    by_method = By.CSS_SELECTOR
+                    context = composer if composer else self.driver
+                    button = WebDriverWait(context, 5).until(
+                        EC.element_to_be_clickable((by_method, selector))
+                    )
                 
                 if button:
                     # Check if the button contains "Post" text or is likely to be a post button
@@ -554,37 +571,50 @@ class LinkedInInteraction:
             except Exception as e:
                 logging.info(f"Post button selector {selector} not found: {str(e)}")
         
-        # If we still can't find the button, try to find ANY button that might be clickable
-        # This is a last resort approach
-        try:
-            logging.info("Looking for any clickable button in the share box")
-            buttons = self.driver.find_elements(By.TAG_NAME, "button")
-            
-            for button in buttons:
-                try:
-                    # Check if the button is visible and seems interactive
-                    if button.is_displayed():
-                        button_text = button.text.strip().lower()
-                        button_classes = button.get_attribute("class") or ""
-                        button_aria = button.get_attribute("aria-label") or ""
-                        button_disabled = button.get_attribute("disabled") or "false"
-                        
-                        # Look for buttons that seem to be action buttons
-                        if (button_disabled != "true" and
-                            ("post" in button_text or
-                             "post" in button_aria.lower() or
-                             "primary" in button_classes or
-                             "action" in button_classes)):
-                            
-                            logging.info(f"Found potential post button as fallback: {button_text}")
-                            return button
-                except Exception:
-                    # Ignore errors for individual buttons
-                    pass
-        except Exception as e:
-            logging.error(f"Error finding any buttons: {str(e)}")
-        
+        # Avoid generic fallback that may click wrong buttons (e.g., audience 'Me')
         return None
+
+    def _submit_via_keyboard(self):
+        """Attempt to submit the composer via keyboard shortcut (Ctrl/Cmd + Enter)."""
+        try:
+            actions = ActionChains(self.driver)
+            if platform.system() == "Darwin":
+                actions.key_down(Keys.COMMAND)
+            else:
+                actions.key_down(Keys.CONTROL)
+            actions.send_keys(Keys.ENTER).key_up(Keys.COMMAND if platform.system()=="Darwin" else Keys.CONTROL).perform()
+            self.random_delay(1, 2)
+            return True
+        except Exception as e:
+            logging.info(f"Keyboard submit failed: {e}")
+            return False
+
+    def _click_post_via_js(self):
+        """Use JavaScript to find and click a Post button within the share composer."""
+        try:
+            js = """
+                const modals = Array.from(document.querySelectorAll('div[role="dialog"]'));
+                let root = null;
+                for (const m of modals) {
+                  if (m.querySelector('[class*="share"]')) { root = m; break; }
+                }
+                if (!root) root = document;
+                const candidates = Array.from(root.querySelectorAll('button, footer button'));
+                const isPost = (el) => {
+                  const t = (el.innerText || el.textContent || '').trim().toLowerCase();
+                  const a = (el.getAttribute('aria-label') || '').toLowerCase();
+                  return t === 'post' || t.includes('post') || a.includes('post');
+                };
+                for (const el of candidates) {
+                  if (isPost(el) && !el.disabled) { el.click(); return true; }
+                }
+                return false;
+            """
+            clicked = self.driver.execute_script(js)
+            return bool(clicked)
+        except Exception as e:
+            logging.info(f"JS post click failed: {e}")
+            return False
     
     def _click_element_with_fallback(self, element, element_name):
         """
