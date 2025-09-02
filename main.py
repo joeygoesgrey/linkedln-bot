@@ -33,7 +33,7 @@ def setup_argument_parser():
     parser.add_argument(
         "--topics-file", 
         default=config.DEFAULT_TOPIC_FILE,
-        help="Path to a text file containing post topics, one per line."
+        help="Path to a text file containing post topics, one per line. If missing, falls back to built-in templates."
     )
     
     parser.add_argument(
@@ -91,10 +91,11 @@ def main():
     elif args.no_images:
         logging.info("Image uploads disabled")
     
-    # Validate topics file exists
+    # If topics file is missing, continue with fallbacks
+    topics_file_to_use = args.topics_file
     if not Path(args.topics_file).exists():
-        logging.error(f"Topics file not found: {args.topics_file}")
-        return 1
+        logging.warning(f"Topics file not found: {args.topics_file}. Falling back to built-in templates.")
+        topics_file_to_use = None
     
     # Validate images directory if provided
     if args.images_dir and not args.no_images:
@@ -110,7 +111,7 @@ def main():
         bot = LinkedInBot()
         
         # Process topics and post to LinkedIn
-        bot.process_topics(args.topics_file, images_dir)
+        bot.process_topics(topics_file_to_use, images_dir)
         
         # Close the bot resources
         bot.close()

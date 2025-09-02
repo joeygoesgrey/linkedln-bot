@@ -47,24 +47,34 @@ class LinkedInBot:
         """
         topic_file_path = topic_file_path or config.DEFAULT_TOPIC_FILE
         
-        logging.info(f"Processing topics from {topic_file_path}")
+        logging.info(f"Processing topics from {topic_file_path or 'built-in templates'}")
         try:
-            # Load topics from file
-            with open(topic_file_path, "r") as f:
-                topics = f.readlines()
-            
-            # Clean up topics and filter empty lines
-            topics = [topic.strip() for topic in topics if topic.strip()]
-            
-            if not topics:
-                logging.warning("No topics found in the file.")
-                return
-                
-            logging.info(f"Found {len(topics)} topics.")
-            
-            # Select a random topic
-            chosen_topic = random.choice(topics)
-            logging.info(f"Randomly selected topic: {chosen_topic}")
+            topics = []
+            topics_file_exists = False
+            if topic_file_path and Path(topic_file_path).exists():
+                topics_file_exists = True
+                # Load topics from file
+                with open(topic_file_path, "r") as f:
+                    topics = f.readlines()
+
+                # Clean up topics and filter empty lines
+                topics = [topic.strip() for topic in topics if topic.strip()]
+
+            if topics:
+                logging.info(f"Found {len(topics)} topics from file.")
+                chosen_topic = random.choice(topics)
+                logging.info(f"Randomly selected topic: {chosen_topic}")
+            else:
+                # Fall back to built-in template topics
+                try:
+                    default_topics = list(self.content_generator._default_posts.keys())
+                except Exception:
+                    default_topics = [
+                        "leadership", "productivity", "technology",
+                        "networking", "remote work", "iot", "ai", "blockchain"
+                    ]
+                chosen_topic = random.choice(default_topics)
+                logging.info(f"No topics file available. Using built-in topic: {chosen_topic}")
             
             # Generate post content
             post_content = self.content_generator.generate_post_content(chosen_topic)
@@ -84,7 +94,9 @@ class LinkedInBot:
                 # If posting was successful, remove the topic from the list
                 if post_success:
                     logging.info(f"Successfully posted about: {chosen_topic}")
-                    self._update_topics_file(topic_file_path, topics, chosen_topic)
+                    # Only update file if it existed and we selected from it
+                    if topics_file_exists and chosen_topic in topics:
+                        self._update_topics_file(topic_file_path, topics, chosen_topic)
                     
             # Add some random delay before closing
             time.sleep(random.uniform(5, 10))

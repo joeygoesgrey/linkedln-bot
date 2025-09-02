@@ -46,14 +46,18 @@ Automate creating LinkedIn posts with optional AI‑generated content and media 
    # HEADLESS=true
    ```
 
-3. Prepare a topics file (default: `Topics.txt`) with one topic per line.
+3. (Optional) Prepare a topics file (default: `Topics.txt`) with one topic per line. If missing, the bot falls back to built‑in topics/templates.
 
 ## Usage
 
 Use the CLI entry point `main.py`:
 
 ```bash
+# With topics file
 python main.py --topics-file Topics.txt --images-dir static --headless --debug
+
+# No topics file (uses built-in templates)
+python main.py --images-dir static --headless --debug
 ```
 
 Common flags:
