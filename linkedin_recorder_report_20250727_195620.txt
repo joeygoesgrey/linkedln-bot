@@ -1,0 +1,16 @@
+LinkedIn Interaction Recorder - Summary Report
+==================================================
+
+Recording date: 2025-07-27 19:56:20
+Total interactions recorded: 252
+Clicks: 0
+Text inputs: 0
+File uploads: 0
+
+Click Sequence Summary:
+--------------------------------------------------
+
+Selectors for LinkedIn Automation:
+--------------------------------------------------
+Based on your interactions, consider using these selectors:
+
