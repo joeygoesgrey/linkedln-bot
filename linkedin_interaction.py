@@ -9,6 +9,7 @@ import os
 import time
 import random
 import logging
+import platform
 from pathlib import Path
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -299,20 +300,21 @@ class LinkedInInteraction:
                 logging.info("No unexpected overlay to close.")
             
         # Handle any modals blocking clicks with JavaScript as a last resort
-        try:
-            self.driver.execute_script("""
-                // Remove any modal backdrops
-                var backdrops = document.querySelectorAll('.artdeco-modal-overlay, .artdeco-modal__overlay');
-                backdrops.forEach(function(backdrop) {
-                    backdrop.remove();
-                });
-                
-                // Make the body scrollable again if it was locked
-                document.body.style.overflow = 'auto';
-            """)
-            logging.info("Attempted to remove modal backdrops with JavaScript.")
-        except Exception as e:
-            logging.info(f"JavaScript modal removal unsuccessful: {str(e)}")
+        if not preserve_share_modal:
+            try:
+                self.driver.execute_script("""
+                    // Remove any modal backdrops
+                    var backdrops = document.querySelectorAll('.artdeco-modal-overlay, .artdeco-modal__overlay');
+                    backdrops.forEach(function(backdrop) {
+                        backdrop.remove();
+                    });
+                    
+                    // Make the body scrollable again if it was locked
+                    document.body.style.overflow = 'auto';
+                """)
+                logging.info("Attempted to remove modal backdrops with JavaScript.")
+            except Exception as e:
+                logging.info(f"JavaScript modal removal unsuccessful: {str(e)}")
     
     def post_to_linkedin(self, post_text, image_paths=None):
         """
@@ -380,9 +382,9 @@ class LinkedInInteraction:
                 logging.error("Could not find 'Post' button")
                 return False
                 
-            # First check and dismiss any overlays that might block the click
-            # Preserve the share composer modal so we don't close it accidentally
-            self.dismiss_overlays(preserve_share_modal=True)
+        # First check and dismiss any overlays that might block the click
+        # Preserve the share composer modal so we don't close it accidentally
+        self.dismiss_overlays(preserve_share_modal=True)
             self.random_delay(1, 2)
                 
             # Try to click the Post button with fallbacks
@@ -424,7 +426,7 @@ class LinkedInInteraction:
             self.random_delay(5, 8)
             
             # Verify the post was successful by looking for a success notification
-            if self._verify_post_success():
+            if self._verify_post_success(post_text):
                 logging.info("Successfully posted to LinkedIn - confirmed by success indicator.")
                 return True
             else:
@@ -527,10 +529,19 @@ class LinkedInInteraction:
 
         # Candidate selectors for the Post button (scoped under composer when available)
         post_button_selectors = [
+            # English
             "//button[normalize-space(.)='Post']",
             "//span[normalize-space(.)='Post']/parent::button",
             "//button[contains(@aria-label, 'Post')]",
+            # Variants often seen (Share/Publish)
+            "//button[normalize-space(.)='Share']",
+            "//span[normalize-space(.)='Share']/parent::button",
+            "//button[contains(@aria-label, 'Share')]",
+            "//button[normalize-space(.)='Publish']",
+            "//span[normalize-space(.)='Publish']/parent::button",
+            # Class-based fallback inside composer
             "//button[contains(@class, 'share-actions__primary-action')]",
+            # Generic enabled primary button in footer of composer
             "//footer//button[contains(@class, 'artdeco-button') and not(@disabled)]",
         ]
         
@@ -559,9 +570,9 @@ class LinkedInInteraction:
                     button_classes = button.get_attribute("class") or ""
                     button_aria = button.get_attribute("aria-label") or ""
                     
-                    # If we're confident this is the post button
-                    if ("post" in button_text or 
-                        "post" in button_aria.lower() or
+                    # If we're confident this is the post/share button
+                    if ("post" in button_text or "share" in button_text or "publish" in button_text or
+                        "post" in button_aria.lower() or "share" in button_aria.lower() or "publish" in button_aria.lower() or
                         "primary-action" in button_classes or
                         button_text == ""):  # Sometimes the post button has no text but has the right class
                         logging.info(f"Found post button with selector: {selector} (text: '{button_text}')")
@@ -603,7 +614,9 @@ class LinkedInInteraction:
                 const isPost = (el) => {
                   const t = (el.innerText || el.textContent || '').trim().toLowerCase();
                   const a = (el.getAttribute('aria-label') || '').toLowerCase();
-                  return t === 'post' || t.includes('post') || a.includes('post');
+                  return t === 'post' || t.includes('post') || a.includes('post') ||
+                         t === 'share' || t.includes('share') || a.includes('share') ||
+                         t === 'publish' || t.includes('publish') || a.includes('publish');
                 };
                 for (const el of candidates) {
                   if (isPost(el) && !el.disabled) { el.click(); return true; }
@@ -926,7 +939,7 @@ class LinkedInInteraction:
         logging.error("All attempts to find or create file input element failed")
         return None
 
-    def _verify_post_success(self):
+    def _verify_post_success(self, post_text):
         """
         Verify that a post was successfully published by checking for success indicators.
         
@@ -941,8 +954,7 @@ class LinkedInInteraction:
         # Success indicators - things we might see when a post is successfully published
         success_indicators = [
             # Success toasts and notifications
-            "//div[contains(@class, 'artdeco-toast') and contains(text(), 'posted')]",
-            "//div[contains(@class, 'artdeco-toast') and contains(text(), 'shared')]",
+            "//div[contains(@class, 'artdeco-toast') and (contains(translate(., 'POSTEDSHARED', 'postedshared'), 'posted') or contains(translate(., 'POSTEDSHARED', 'postedshared'), 'shared'))]",
             "//div[contains(@class, 'artdeco-toast-item')]",
             "//div[contains(@class, 'toast') and contains(@role, 'alert')]",
             
@@ -960,7 +972,7 @@ class LinkedInInteraction:
                     EC.presence_of_element_located((By.XPATH, selector))
                 )
                 logging.info(f"Found success indicator: {selector}")
-                return True
+                break
             except:
                 continue
                 
@@ -984,7 +996,7 @@ class LinkedInInteraction:
         except:
             # Modal no longer exists, likely means post was successful
             logging.info("Post modal no longer present, considering post successful")
-            return True
+            # fall through to feed checks
             
         # As a final check, see if we're back at the feed
         try:
@@ -992,6 +1004,19 @@ class LinkedInInteraction:
                 EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'share-box-feed-entry__closed-share-box')]"))
             )
             logging.info("Back at feed with share box visible, post appears successful")
+            # Try to confirm by looking for the post text snippet in the feed
+            try:
+                snippet = (post_text or "").strip().split("\n")[0][:80]
+                if snippet:
+                    # Escape quotes in snippet
+                    snippet_literal = snippet.replace('"', '\\"')
+                    xpath = f"//div[contains(@class,'feed') or contains(@class,'scaffold')]//*[contains(normalize-space(.), \"{snippet_literal}\")]"
+                    WebDriverWait(self.driver, 5).until(
+                        EC.presence_of_element_located((By.XPATH, xpath))
+                    )
+                    logging.info("Detected post content snippet in feed")
+            except Exception:
+                logging.info("Could not confirm post content in feed; relying on toast/feed checks")
             return True
         except TimeoutException:
             logging.warning("Could not confirm post success with certainty")
