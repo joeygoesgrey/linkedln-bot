@@ -46,6 +46,10 @@ SHORT_TIMEOUT = 5     # Shorter timeout for quick checks
 # File paths
 DEFAULT_TOPIC_FILE = "Topics.txt"
 LOG_DIRECTORY = "logs"
+CUSTOM_POSTS_FILE = os.getenv("CUSTOM_POSTS_FILE", "CustomPosts.txt")
+
+# Content limits
+MAX_POST_LENGTH = 1300
 
 # LinkedIn selectors (can be updated if the UI changes)
 START_POST_SELECTORS = [

@@ -44,6 +44,8 @@ Automate creating LinkedIn posts with optional AI‑generated content and media 
    GEMINI_API_KEY=your_gemini_api_key
    # Optional: override headless browser mode
    # HEADLESS=true
+   # Optional: path to your custom local post templates (one per line; supports {topic})
+   # CUSTOM_POSTS_FILE=CustomPosts.txt
    ```
 
 3. (Optional) Prepare a topics file (default: `Topics.txt`) with one topic per line. If missing, the bot falls back to built‑in topics/templates.
@@ -84,6 +86,7 @@ It opens a visible browser. Manually log in, start a post, add text, upload medi
 - Run responsibly and follow LinkedIn’s Terms of Service.
 - Add natural delays and avoid aggressive posting to reduce risk.
 - Legacy scripts are kept for reference under `legacy/` (e.g., `legacy/browser.py`, `legacy/utils.py`), but the supported path is `main.py`.
+- If the AI API is unavailable or returns no content, the bot now falls back to local generation: it first tries your `CUSTOM_POSTS_FILE` templates (supports `{topic}`), then builds a randomized post from phrase sets.
 
 ## Contributing
 

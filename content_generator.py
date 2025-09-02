@@ -26,6 +26,7 @@ class ContentGenerator:
         """
         self._setup_api()
         self._default_posts = self._get_default_templates()
+        self._custom_posts = self._load_custom_posts(config.CUSTOM_POSTS_FILE)
         
     def _setup_api(self):
         """
@@ -72,6 +73,97 @@ class ContentGenerator:
             
             "blockchain": "Beyond cryptocurrency, blockchain technology offers unprecedented transparency and security across industries from supply chain to healthcare. The distributed ledger paradigm is quietly transforming how we establish trust in digital ecosystems. How do you see blockchain reshaping your industry in the coming years? #Blockchain #DigitalTransformation #EmergingTech"
         }
+    
+    def _load_custom_posts(self, path):
+        """
+        Load custom fallback post templates from a file if present.
+        Each line is treated as a template; supports `{topic}` placeholder.
+
+        Args:
+            path (str): Path to a custom posts file.
+
+        Returns:
+            list[str]: List of template strings.
+        """
+        try:
+            if not path:
+                return []
+            if not os.path.exists(path):
+                logging.info(f"No custom posts file found at {path}; skipping.")
+                return []
+            with open(path, "r", encoding="utf-8") as f:
+                lines = [ln.strip() for ln in f.readlines()]
+            posts = [ln for ln in lines if ln]
+            logging.info(f"Loaded {len(posts)} custom post templates from {path}")
+            return posts
+        except Exception as e:
+            logging.warning(f"Failed to load custom posts from {path}: {e}")
+            return []
+    
+    def _generate_local_post(self, topic, default_post=None):
+        """
+        Generate a local post without AI. Prefers custom templates if provided,
+        otherwise composes a randomized post from phrase sets.
+
+        Args:
+            topic (str): Topic to include.
+            default_post (str): Optional default post to fall back to.
+
+        Returns:
+            str: Locally generated post text.
+        """
+        # 1) Use a custom template if available
+        if getattr(self, "_custom_posts", None):
+            try:
+                import random
+                tpl = random.choice(self._custom_posts)
+                text = tpl.format(topic=topic)
+                if len(text) > config.MAX_POST_LENGTH:
+                    text = text[: config.MAX_POST_LENGTH - 3].rstrip() + "..."
+                return text
+            except Exception as e:
+                logging.debug(f"Custom template render failed, using randomized: {e}")
+
+        # 2) Build a randomized post from phrase sets
+        import random
+        intros = [
+            "Quick thought on",
+            "A practical take on",
+            "Some reflections about",
+            "What I’m learning from",
+            "Here’s a perspective on",
+        ]
+        values = [
+            "focus on clear outcomes over busywork",
+            "ship small, iterate fast, and listen to feedback",
+            "keep systems simple and resilient",
+            "optimize for long‑term maintainability",
+            "blend data with intuition when deciding",
+        ]
+        actions = [
+            "what’s one tip that helped you most?",
+            "how are you approaching this right now?",
+            "what trade‑offs do you consider first?",
+            "what’s a pattern you’d repeat?",
+            "what did you try that didn’t work?",
+        ]
+        hashtags_pool = [
+            "#LeadershipInsights", "#Productivity", "#Tech", "#AI", "#IoT",
+            "#DigitalTransformation", "#CareerGrowth", "#Engineering", "#SaaS",
+        ]
+        intro = random.choice(intros)
+        value = random.choice(values)
+        action = random.choice(actions)
+        hashtags = " ".join(random.sample(hashtags_pool, k=min(3, len(hashtags_pool))))
+        post = (
+            f"{intro} {topic}.\n\n"
+            f"Key principle: {value}.\n\n"
+            f"Curious to hear from this community—{action}\n\n"
+            f"{hashtags}"
+        )
+        if len(post) > config.MAX_POST_LENGTH:
+            post = post[: config.MAX_POST_LENGTH - 3].rstrip() + "..."
+        return post or (default_post or f"Sharing a few thoughts on {topic} today.")
     
     def remove_markdown(self, text, ignore_hashtags=False):
         """
@@ -142,8 +234,8 @@ class ContentGenerator:
         try:
             # First check if API key is available
             if not config.GEMINI_API_KEY:
-                logging.error("GEMINI_API_KEY not found. Using fallback content.")
-                return default_post
+                logging.error("GEMINI_API_KEY not found. Using local fallback content.")
+                return self._generate_local_post(topic, default_post)
                 
             # Get available models and select the best one
             selected_model = self._select_gemini_model()
@@ -170,15 +262,15 @@ class ContentGenerator:
                     logging.info("Successfully generated post content with Gemini API")
                     return post_text
                 else:
-                    logging.warning("Received invalid response from Gemini API, using fallback content")
+                    logging.warning("Received invalid response from Gemini API, using local fallback content")
             else:
-                logging.warning("No suitable model found for content generation, using fallback content")
+                logging.warning("No suitable model found for content generation, using local fallback content")
             
-            return default_post
+            return self._generate_local_post(topic, default_post)
             
         except Exception as e:
             logging.error(f"Failed to generate post content: {str(e)}")
-            return default_post
+            return self._generate_local_post(topic, default_post)
     
     def _select_gemini_model(self):
         """
