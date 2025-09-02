@@ -1,85 +1,86 @@
 # LinkedIn Automation Bot
 
-This LinkedIn Automation Bot allows you to interact with posts and create your own posts on LinkedIn, using Google Gemini AI to generate insightful comments and posts. It's built using Python, Selenium, and other powerful libraries to automate liking, commenting, and posting on LinkedIn.
+Automate creating LinkedIn posts with optional AI‑generated content and media uploads. The bot uses Python, Selenium, and the Google Gemini API to generate and publish posts. A recorder tool is included to capture reliable UI selectors when the LinkedIn UI changes.
 
 ## Features
 
-- **Auto-Commenting:** Analyzes posts and generates relevant comments using Google Gemini's AI models.
-- **Auto-Liking:** Automatically likes posts based on content analysis.
-- **Auto-Posting:** Publishes posts directly on LinkedIn, leveraging AI to create engaging and tailored posts.
-- **Content Filtering:** Removes markdown and formats comments for a seamless look.
+- **Auto‑posting:** Generates and publishes LinkedIn posts from topic prompts.
+- **AI content:** Uses Google Gemini to create engaging, on‑topic copy (with template fallback).
+- **Media uploads:** Optionally attach up to 3 images from a directory.
+- **Resilient selectors:** Multiple selector strategies and overlay dismissal.
+- **Structured logging:** File + console logs per run.
 
 ## Tech Stack
 
-- **Python OOP:** The bot is built with Object-Oriented Programming principles for modularity and maintainability.
-- **Selenium WebDriver:** Automates browser interactions with LinkedIn's web interface.
-- **Google Gemini API:** Provides AI-generated comments and posts using the Gemini language model.
-- **BeautifulSoup:** Extracts and processes LinkedIn post content.
-- **Logging:** Logs every step and handles errors gracefully.
+- **Python + Selenium:** Browser automation via undetected‑chromedriver with fallbacks.
+- **Google Gemini API:** AI content via `google-generativeai`.
+- **BeautifulSoup:** Light content processing helpers.
+- **dotenv + logging:** Configuration and logs.
 
 ## Prerequisites
 
-- Python 3.7 or later
-- Google Gemini API key
-- Selenium WebDriver and ChromeDriver
+- Python 3.9+
+- A Google Gemini API key
+- Chrome/Chromium installed (driver handled automatically)
 
 ## Setup
 
-1. **Clone the Repository:**
+1. Install dependencies (choose one):
 
-   ```bash
-   git clone https://github.com/joeygoesgrey/linkedln-bot.git
-   cd linkedin-bot
-   ```
+   - pip:
+     ```bash
+     pip install -r requirements.txt
+     ```
+   - pipenv:
+     ```bash
+     pipenv install && pipenv shell
+     ```
 
-2. **Create a Pipenv Environment and Install Dependencies:**
-
-   ```bash
-   pipenv install
-   ```
-
-3. **Activate the Pipenv Shell:**
-
-   ```bash
-   pipenv shell
-   ```
-
-4. **Set Up Environment Variables:**
-
-   - Create a `.env` file in the root directory with your LinkedIn credentials and Google Gemini API key:
+2. Create a `.env` in the repo root:
 
    ```ini
-   LINKEDLN_USERNAME=your_linkedln_username
-   LINKEDLN_PASSWORD=your_linkedln_password
+   LINKEDIN_USERNAME=your_email_or_username
+   LINKEDIN_PASSWORD=your_password
    GEMINI_API_KEY=your_gemini_api_key
+   # Optional: override headless browser mode
+   # HEADLESS=true
    ```
 
-5. **Download ChromeDriver:**
-   ChromeDriver is required for Selenium to interact with the Chrome browser. With `webdriver-manager` included in the dependencies, no separate download is needed.
+3. Prepare a topics file (default: `Topics.txt`) with one topic per line.
 
 ## Usage
 
-1. **Run the Bot:**
-   Start the bot using:
+Use the CLI entry point `main.py`:
 
-   ```bash
-   python browser.py
-   ```
+```bash
+python main.py --topics-file Topics.txt --images-dir static --headless --debug
+```
 
-2. **Available Methods:**
-   - `fetch_and_store_content()`: Fetches and stores LinkedIn post data.
-   - `analyze_and_interact()`: Analyzes the stored posts and interacts based on AI analysis.
-   - `function_to_make_a_post()`: Automates posting directly to LinkedIn.
+Common flags:
+- `--topics-file`: Path to a text file of topics (default `Topics.txt`).
+- `--images-dir`: Directory of images to attach (optional; picks up to 3).
+- `--no-images`: Force text‑only posts even if `--images-dir` is provided.
+- `--headless`: Run Chrome in headless mode.
+- `--debug`: Enable verbose logging.
 
-## Important Considerations
+On success, the used topic is removed from the file.
 
-- **Ethics and Compliance:**
-  Use the bot responsibly and follow LinkedIn's terms of service to avoid account restrictions.
-- **Rate Limiting:**
-  Ensure the bot operates at reasonable intervals to mimic natural user behavior.
+## Recorder (Optional)
+
+If LinkedIn’s UI changes, run the recorder to capture fresh selectors:
+
+```bash
+python browser_recorder.py
+```
+
+It opens a visible browser. Manually log in, start a post, add text, upload media, and post. The tool saves a JSON log, a DOM snapshot, screenshots, and a summary report `linkedin_recorder_report_*.txt`.
+
+## Notes
+
+- Run responsibly and follow LinkedIn’s Terms of Service.
+- Add natural delays and avoid aggressive posting to reduce risk.
+- Legacy scripts are kept for reference under `legacy/` (e.g., `legacy/browser.py`, `legacy/utils.py`), but the supported path is `main.py`.
 
 ## Contributing
 
-Contributions are welcome! Feel free to fork the repository and submit a pull request with your enhancements or bug fixes.
-
- 
+Contributions are welcome! Please open an issue or PR.
