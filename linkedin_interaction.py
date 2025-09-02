@@ -218,7 +218,7 @@ class LinkedInInteraction:
                 
         return None
         
-    def dismiss_overlays(self):
+    def dismiss_overlays(self, preserve_share_modal=False):
         """
         Dismiss any overlays that might be in the way, such as chat boxes or notification popups.
         """
@@ -238,56 +238,65 @@ class LinkedInInteraction:
         except Exception:
             logging.info("No notification toast to close.")
             
-        # Save draft dialogs
-        try:
-            save_draft_dialog = self.driver.find_element(By.XPATH, "//div[contains(@class, 'save-draft-dialog')]")
-            # Find the discard button or cancel button
-            discard_button = save_draft_dialog.find_element(By.XPATH, ".//button[contains(@class, 'artdeco-button--secondary')]")
-            discard_button.click()
-            logging.info("Dismissed save draft dialog.")
-            self.random_delay(1, 2)
-        except Exception:
-            logging.info("No save draft dialog to dismiss.")
-            
-        # Unsaved detour dialog
-        try:
-            unsaved_dialog = self.driver.find_element(By.XPATH, "//div[contains(@class, 'unsaved-detour-dialog')]")
-            # Find the button to dismiss it
-            dismiss_button = unsaved_dialog.find_element(By.XPATH, ".//button[contains(@class, 'artdeco-button--secondary')]")
-            dismiss_button.click()
-            logging.info("Dismissed unsaved detour dialog.")
-            self.random_delay(1, 2)
-        except Exception:
-            logging.info("No unsaved detour dialog to dismiss.")
+        if not preserve_share_modal:
+            # Save draft dialogs
+            try:
+                save_draft_dialog = self.driver.find_element(By.XPATH, "//div[contains(@class, 'save-draft-dialog')]")
+                discard_button = save_draft_dialog.find_element(By.XPATH, ".//button[contains(@class, 'artdeco-button--secondary')]")
+                discard_button.click()
+                logging.info("Dismissed save draft dialog.")
+                self.random_delay(1, 2)
+            except Exception:
+                logging.info("No save draft dialog to dismiss.")
+                
+            # Unsaved detour dialog
+            try:
+                unsaved_dialog = self.driver.find_element(By.XPATH, "//div[contains(@class, 'unsaved-detour-dialog')]")
+                dismiss_button = unsaved_dialog.find_element(By.XPATH, ".//button[contains(@class, 'artdeco-button--secondary')]")
+                dismiss_button.click()
+                logging.info("Dismissed unsaved detour dialog.")
+                self.random_delay(1, 2)
+            except Exception:
+                logging.info("No unsaved detour dialog to dismiss.")
 
-        # Generic modal dialog close buttons
-        try:
-            modal_close_button = self.driver.find_element(By.XPATH, "//button[contains(@class, 'artdeco-modal__dismiss')]")
-            modal_close_button.click()
-            logging.info("Closed a modal dialog using dismiss button.")
-            self.random_delay(1, 2)
-        except Exception:
-            logging.info("No modal dialog dismiss button found.")
+        # Generic modal dialog close buttons (avoid closing the share composer)
+        if not preserve_share_modal:
+            try:
+                modal_close_button = self.driver.find_element(By.XPATH, "//button[contains(@class, 'artdeco-modal__dismiss')]")
+                # Ensure this is not the share composer modal
+                try:
+                    share_modal = modal_close_button.find_element(By.XPATH, "ancestor::div[contains(@class,'share-box-modal')]")
+                    if share_modal:
+                        logging.info("Detected share composer modal; preserving it.")
+                        raise Exception("Preserve share composer")
+                except Exception:
+                    pass
+                modal_close_button.click()
+                logging.info("Closed a modal dialog using dismiss button.")
+                self.random_delay(1, 2)
+            except Exception:
+                logging.info("No modal dialog dismiss button found or preserved.")
             
-        # Handle confirmation dialogs (e.g., "Discard" vs "Continue editing")
-        try:
-            confirm_dialog = self.driver.find_element(By.XPATH, "//div[contains(@class, 'artdeco-modal__confirm-dialog')]")
-            # Try to find the secondary action button (usually the "Discard" button)
-            secondary_button = confirm_dialog.find_element(By.XPATH, ".//button[contains(@class, 'artdeco-button--secondary')]")
-            secondary_button.click()
-            logging.info("Clicked secondary button in confirmation dialog.")
-            self.random_delay(1, 2)
-        except Exception:
-            logging.info("No confirmation dialog to handle.")
+        # Handle confirmation dialogs (avoid while composing a post)
+        if not preserve_share_modal:
+            try:
+                confirm_dialog = self.driver.find_element(By.XPATH, "//div[contains(@class, 'artdeco-modal__confirm-dialog')]")
+                secondary_button = confirm_dialog.find_element(By.XPATH, ".//button[contains(@class, 'artdeco-button--secondary')]")
+                secondary_button.click()
+                logging.info("Clicked secondary button in confirmation dialog.")
+                self.random_delay(1, 2)
+            except Exception:
+                logging.info("No confirmation dialog to handle.")
 
         # Any unexpected overlay that has a close (X) button
-        try:
-            close_button = self.driver.find_element(By.XPATH, "//button[@aria-label='Close' or @aria-label='Dismiss' or contains(@class, 'close-btn')]")
-            close_button.click()
-            logging.info("Closed an unexpected overlay.")
-            self.random_delay(1, 2)
-        except Exception:
-            logging.info("No unexpected overlay to close.")
+        if not preserve_share_modal:
+            try:
+                close_button = self.driver.find_element(By.XPATH, "//button[@aria-label='Close' or @aria-label='Dismiss' or contains(@class, 'close-btn')]")
+                close_button.click()
+                logging.info("Closed an unexpected overlay.")
+                self.random_delay(1, 2)
+            except Exception:
+                logging.info("No unexpected overlay to close.")
             
         # Handle any modals blocking clicks with JavaScript as a last resort
         try:
@@ -372,13 +381,28 @@ class LinkedInInteraction:
                 return False
                 
             # First check and dismiss any overlays that might block the click
-            self.dismiss_overlays()
+            # Preserve the share composer modal so we don't close it accidentally
+            self.dismiss_overlays(preserve_share_modal=True)
             self.random_delay(1, 2)
                 
             # Try to click the Post button with fallbacks
             if not self._click_element_with_fallback(post_button, "Post"):
-                logging.error("Failed to click the Post button after several attempts")
-                return False
+                # Element may have gone stale if the DOM updated; re-locate and retry
+                logging.info("Re-locating 'Post' button after click failure and retrying")
+                for _ in range(2):
+                    self.random_delay(1, 2)
+                    post_button = self._find_post_button()
+                    if not post_button:
+                        continue
+                    try:
+                        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", post_button)
+                    except Exception:
+                        pass
+                    if self._click_element_with_fallback(post_button, "Post"):
+                        break
+                else:
+                    logging.error("Failed to click the Post button after several attempts")
+                    return False
             
             # Wait for the post to complete
             self.random_delay(5, 8)
@@ -939,8 +963,11 @@ class LinkedInInteraction:
             )
             logging.info("Back at feed with share box visible, post appears successful")
             return True
-        except:
+        except TimeoutException:
             logging.warning("Could not confirm post success with certainty")
+            return False
+        except Exception as e:
+            logging.error(f"Unexpected error during post success verification: {e}")
             return False
 
     def _handle_post_upload_buttons(self):
