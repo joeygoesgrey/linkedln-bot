@@ -8,6 +8,7 @@ providing a robust way to create and configure the Selenium WebDriver.
 import os
 import platform
 import logging
+import shutil
 import subprocess
 import undetected_chromedriver as uc
 from selenium import webdriver
@@ -139,50 +140,89 @@ class DriverFactory:
     @staticmethod
     def _initialize_driver_with_fallbacks(browser_path, browser_version, options):
         """Try multiple initialization strategies with fallbacks."""
-        # First attempt: Use system ChromeDriver if available
+
+        # 0) Prefer a locally installed chromedriver to avoid network
+        local_driver_path = DriverFactory._find_local_chromedriver()
+        if local_driver_path:
+            try:
+                logging.info(f"Attempting local ChromeDriver at: {local_driver_path}")
+                # Build standard ChromeOptions mirroring our settings
+                std_options = webdriver.ChromeOptions()
+                std_options.add_argument("--no-sandbox")
+                std_options.add_argument("--disable-dev-shm-usage")
+                if config.HEADLESS:
+                    std_options.add_argument("--headless=new")
+                std_options.add_argument(f"--window-size={config.WINDOW_SIZE[0]},{config.WINDOW_SIZE[1]}")
+                std_options.add_argument("--disable-notifications")
+                std_options.add_argument(f"user-agent={config.USER_AGENT}")
+                # If we detected a browser binary, point to it
+                if browser_path:
+                    try:
+                        std_options.binary_location = browser_path
+                    except Exception:
+                        pass
+                service = Service(local_driver_path)
+                driver = webdriver.Chrome(service=service, options=std_options)
+                return driver
+            except Exception as e_local:
+                logging.warning(f"Local ChromeDriver init failed: {e_local}")
+
+        # 1) Try undetected-chromedriver (may require network for patching)
         try:
-            logging.info("Attempting to use system ChromeDriver")
+            logging.info("Attempting to use undetected-chromedriver (system/auto)")
             driver_args = {
                 "options": options,
                 "use_subprocess": True,
-                "driver_executable_path": False  # Try using system ChromeDriver
+                "driver_executable_path": False
             }
-            
-            # Only add browser_executable_path if we found a valid path
             if browser_path:
                 driver_args["browser_executable_path"] = browser_path
-            
             driver = uc.Chrome(**driver_args)
             return driver
-            
         except Exception as e1:
-            logging.warning(f"First driver attempt failed: {str(e1)}. Trying alternative approach.")
-            
-            # Second attempt: Let undetected-chromedriver handle download
+            logging.warning(f"undetected-chromedriver init failed: {str(e1)}. Retrying with default.")
+
+            # 2) Retry default undetected-chromedriver init
             try:
                 logging.info("Attempting default undetected-chromedriver initialization")
                 driver_args = {
                     "options": options,
                     "use_subprocess": True
                 }
-                
-                # Only add browser_executable_path if we found a valid path
                 if browser_path:
                     driver_args["browser_executable_path"] = browser_path
-                    
                 driver = uc.Chrome(**driver_args)
                 return driver
-                
             except Exception as e2:
-                logging.warning(f"Second driver attempt failed: {str(e2)}. Trying with standard selenium.")
-                
-                # Final fallback: Try with standard selenium ChromeDriver
-                logging.info("Attempting fallback to standard selenium ChromeDriver")
-                
-                # Try to determine the chrome type
+                logging.warning(f"Second undetected-chromedriver init failed: {str(e2)}. Trying Selenium Manager (may need network).")
+
+                # 3) Selenium Manager via webdriver-manager (requires network)
+                logging.info("Attempting fallback to standard selenium ChromeDriver via webdriver-manager")
                 chrome_type = ChromeType.CHROMIUM if browser_version and "chromium" in str(browser_version).lower() else ChromeType.GOOGLE
                 logging.info(f"Using ChromeType: {chrome_type}")
-                
                 service = Service(ChromeDriverManager(chrome_type=chrome_type).install())
                 driver = webdriver.Chrome(service=service, options=options)
                 return driver
+
+    @staticmethod
+    def _find_local_chromedriver():
+        """Locate a locally installed chromedriver binary if available."""
+        # 1) Explicit env var
+        for env_name in ("CHROMEDRIVER_PATH", "CHROMEWEBDRIVER", "WEBDRIVER_CHROME_DRIVER"):
+            path = os.getenv(env_name)
+            if path and os.path.exists(path):
+                return path
+        # 2) In PATH
+        path = shutil.which("chromedriver")
+        if path:
+            return path
+        # 3) Common locations
+        common_paths = [
+            "/usr/bin/chromedriver",
+            "/usr/local/bin/chromedriver",
+            "/snap/bin/chromedriver",
+        ]
+        for p in common_paths:
+            if os.path.exists(p):
+                return p
+        return None
