@@ -382,9 +382,9 @@ class LinkedInInteraction:
                 logging.error("Could not find 'Post' button")
                 return False
                 
-        # First check and dismiss any overlays that might block the click
-        # Preserve the share composer modal so we don't close it accidentally
-        self.dismiss_overlays(preserve_share_modal=True)
+            # First check and dismiss any overlays that might block the click
+            # Preserve the share composer modal so we don't close it accidentally
+            self.dismiss_overlays(preserve_share_modal=True)
             self.random_delay(1, 2)
                 
             # Try to click the Post button with fallbacks
