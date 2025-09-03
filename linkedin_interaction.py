@@ -706,9 +706,9 @@ class LinkedInInteraction:
         try:
             logging.info(f"Uploading {len(image_paths)} images to LinkedIn post")
             
-            # Try to dismiss any potential overlays or modals first
+            # Try to dismiss any potential overlays or modals first (preserve composer)
             self.random_delay()
-            self.dismiss_overlays()
+            self.dismiss_overlays(preserve_share_modal=True)
             self.random_delay()
             
             # Find the media button using the _find_photo_button method
@@ -816,20 +816,42 @@ class LinkedInInteraction:
         
         # Combine both sets of selectors
         all_selectors = photo_button_selectors + modal_photo_button_selectors
-        
-        # Try all selectors
+
+        # Prefer searching within the composer modal
+        composer_roots = [
+            "//div[@role='dialog' and contains(@class, 'share-creation-state')]",
+            "//div[@role='dialog' and contains(@class, 'share-box-modal')]",
+            "//div[contains(@class, 'share-box-modal')]",
+        ]
+        composer = None
+        for root in composer_roots:
+            try:
+                composer = WebDriverWait(self.driver, config.ELEMENT_TIMEOUT).until(
+                    EC.presence_of_element_located((By.XPATH, root))
+                )
+                break
+            except Exception:
+                continue
+
+        # Try all selectors, scoping to composer when available
         for selector in all_selectors:
             try:
-                selector_type = By.XPATH if selector.startswith("//") else By.CSS_SELECTOR
-                button = WebDriverWait(self.driver, config.SHORT_TIMEOUT).until(
-                    EC.element_to_be_clickable((selector_type, selector))
-                )
-                logging.info(f"Found photo button with selector: {selector}")
-                return button
+                if selector.startswith("//") and composer is not None:
+                    button = composer.find_element(By.XPATH, "." + selector[1:])
+                    if button.is_enabled() and button.is_displayed():
+                        logging.info(f"Found photo button (scoped) with selector: {selector}")
+                        return button
+                else:
+                    selector_type = By.XPATH if selector.startswith("//") else By.CSS_SELECTOR
+                    button = WebDriverWait(self.driver, config.ELEMENT_TIMEOUT).until(
+                        EC.element_to_be_clickable((selector_type, selector))
+                    )
+                    logging.info(f"Found photo button with selector: {selector}")
+                    return button
             except Exception as e:
                 logging.info(f"Photo button selector {selector} not found: {str(e)}")
-        
-        logging.error("Could not find any photo upload button")
+
+        logging.error("Could not find any photo upload button in composer")
         return None
     
     def _find_file_input(self):
