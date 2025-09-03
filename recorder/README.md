@@ -23,7 +23,11 @@ A focused, headful Chrome session that lets you manually log into LinkedIn and c
    pip install -r requirements.txt
    ```
 
-2. Run the recorder headful (non-headless):
+2. Ensure a local ChromeDriver is installed (recommended for offline/headful):
+   - Debian/Ubuntu: `sudo apt-get install chromium-driver`
+   - Or set `CHROMEDRIVER_PATH=/path/to/chromedriver`
+
+3. Run the recorder headful (non-headless):
    ```bash
    python recorder/recorder.py
    ```
@@ -38,6 +42,8 @@ A focused, headful Chrome session that lets you manually log into LinkedIn and c
 
 4. Return to the terminal and press Ctrl+C to stop recording.
 
+If undetected-chromedriver complains about a version mismatch, install a local chromedriver matching your browser version and set `CHROMEDRIVER_PATH`, or install via your OS package manager as shown above.
+
 ## Outputs
 
 Saved to `recorder/output/<timestamp>/`:
@@ -49,4 +55,3 @@ Saved to `recorder/output/<timestamp>/`:
 - `screenshots/`: Periodic screenshots taken during the session
 
 Use the summary to refresh the automation selectors in `linkedin_interaction.py` when the UI changes.
-

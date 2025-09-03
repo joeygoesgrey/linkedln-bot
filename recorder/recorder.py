@@ -11,6 +11,7 @@ import os
 import time
 import json
 import logging
+import shutil
 from datetime import datetime
 from pathlib import Path
 from selenium import webdriver
@@ -47,18 +48,55 @@ class LinkedInRecorder:
         self.screenshot_dir.mkdir(exist_ok=True)
         
     def setup_driver(self):
-        """Set up the Chrome WebDriver with recording capabilities."""
-        options = uc.ChromeOptions()
-        options.add_argument("--start-maximized")
-        options.add_argument("--disable-notifications")
-        # Make sure headless is False to allow manual interaction
-        options.headless = False
-        
-        # Add performance logging preferences
-        options.set_capability("goog:loggingPrefs", {"performance": "ALL", "browser": "ALL"})
-        
-        self.driver = uc.Chrome(options=options, use_subprocess=True)
-        self.inject_event_listeners()
+        """Set up the Chrome WebDriver for a headful recording session.
+
+        Prefers a locally installed chromedriver (version-matched to the browser)
+        to avoid version mismatch and network downloads. Falls back to
+        undetected-chromedriver if needed.
+        """
+        # Try a local chromedriver first
+        local_driver = self._find_local_chromedriver()
+
+        # Build Selenium ChromeOptions (headful)
+        sel_options = webdriver.ChromeOptions()
+        sel_options.add_argument("--start-maximized")
+        sel_options.add_argument("--disable-notifications")
+        # If we can find a browser binary, set it explicitly
+        browser_bin = self._find_browser_binary()
+        if browser_bin:
+            try:
+                sel_options.binary_location = browser_bin
+            except Exception:
+                pass
+
+        if local_driver:
+            try:
+                logging.info(f"Recorder: attempting local ChromeDriver at {local_driver}")
+                service = Service(local_driver)
+                self.driver = webdriver.Chrome(service=service, options=sel_options)
+                self.inject_event_listeners()
+                return
+            except Exception as e:
+                logging.warning(f"Recorder: local ChromeDriver failed: {e}")
+
+        # Fallback to undetected-chromedriver (may download/patch driver)
+        uc_options = uc.ChromeOptions()
+        uc_options.add_argument("--start-maximized")
+        uc_options.add_argument("--disable-notifications")
+        uc_options.headless = False
+        uc_options.set_capability("goog:loggingPrefs", {"performance": "ALL", "browser": "ALL"})
+        try:
+            logging.info("Recorder: attempting undetected-chromedriver")
+            # If we found a browser binary, pass it through
+            kwargs = {"options": uc_options, "use_subprocess": True}
+            if browser_bin:
+                kwargs["browser_executable_path"] = browser_bin
+            self.driver = uc.Chrome(**kwargs)
+            self.inject_event_listeners()
+            return
+        except Exception as e:
+            logging.error(f"Recorder: undetected-chromedriver failed: {e}")
+            raise
         
     def inject_event_listeners(self):
         """Inject JavaScript to track user interactions."""
@@ -215,6 +253,37 @@ class LinkedInRecorder:
             self.save_results()
         finally:
             self.driver.quit()
+
+    def _find_local_chromedriver(self):
+        """Locate a locally installed chromedriver binary if available."""
+        # Env variables
+        for env_name in ("CHROMEDRIVER_PATH", "CHROMEWEBDRIVER", "WEBDRIVER_CHROME_DRIVER"):
+            path = os.getenv(env_name)
+            if path and os.path.exists(path):
+                return path
+        # PATH
+        path = shutil.which("chromedriver")
+        if path:
+            return path
+        # Common locations
+        for p in ("/usr/bin/chromedriver", "/usr/local/bin/chromedriver", "/snap/bin/chromedriver"):
+            if os.path.exists(p):
+                return p
+        return None
+
+    def _find_browser_binary(self):
+        """Best-effort detection of a Chrome/Chromium binary for explicit use."""
+        candidates = [
+            "/usr/bin/chromium",
+            "/usr/bin/google-chrome",
+            "/usr/bin/chrome",
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+            "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        ]
+        for c in candidates:
+            if os.path.exists(c):
+                return c
+        return None
     
     def collect_logs(self):
         """Collect browser logs for interaction tracking."""
