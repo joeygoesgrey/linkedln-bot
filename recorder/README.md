@@ -42,6 +42,13 @@ A focused, headful Chrome session that lets you manually log into LinkedIn and c
 
 4. Return to the terminal and press Ctrl+C to stop recording.
 
+Screenshots
+- Screenshots are disabled by default to keep sessions lightweight.
+- To enable screenshots, set an env var before running:
+  ```bash
+  RECORDER_TAKE_SCREENSHOTS=true python recorder/recorder.py
+  ```
+
 If undetected-chromedriver complains about a version mismatch, install a local chromedriver matching your browser version and set `CHROMEDRIVER_PATH`, or install via your OS package manager as shown above.
 
 ## Outputs

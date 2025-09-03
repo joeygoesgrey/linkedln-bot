@@ -38,8 +38,11 @@ class LinkedInRecorder:
         # Create per-session output directories
         self.start_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.session_dir = Path("recorder/output") / self.start_time
+        # Control screenshots via env (default: disabled)
+        self.take_screenshots = str(os.getenv("RECORDER_TAKE_SCREENSHOTS", "false")).lower() in ("1", "true", "yes", "on")
         self.screenshot_dir = self.session_dir / "screenshots"
-        self.screenshot_dir.mkdir(parents=True, exist_ok=True)
+        if self.take_screenshots:
+            self.screenshot_dir.mkdir(parents=True, exist_ok=True)
 
         # Reconfigure logging to include a session file
         root = logging.getLogger()
@@ -254,8 +257,9 @@ class LinkedInRecorder:
         logging.info("6. When done, press Ctrl+C in the terminal to stop recording")
         logging.info("-"*50 + "\n")
         
-        # Take initial screenshot
-        self.take_screenshot("01_initial_linkedin_page")
+        # Take initial screenshot (optional)
+        if self.take_screenshots:
+            self.take_screenshot("01_initial_linkedin_page")
         
         try:
             # Start collecting logs periodically
@@ -264,11 +268,12 @@ class LinkedInRecorder:
                 if not alive:
                     logging.info("Browser window appears closed; stopping recorder loop.")
                     break
-                try:
-                    self.take_screenshot(f"recording_{len(self.interaction_log)}")
-                except Exception:
-                    # Ignore screenshot errors; continue gathering
-                    pass
+                if self.take_screenshots:
+                    try:
+                        self.take_screenshot(f"recording_{len(self.interaction_log)}")
+                    except Exception:
+                        # Ignore screenshot errors; continue gathering
+                        pass
                 time.sleep(2)  # Check logs every 2 seconds
         except KeyboardInterrupt:
             logging.info("Recording stopped by user")
@@ -402,6 +407,8 @@ class LinkedInRecorder:
     
     def take_screenshot(self, name):
         """Take a screenshot of the current browser state."""
+        if not self.take_screenshots:
+            return
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{self.screenshot_dir}/{timestamp}_{name}.png"
