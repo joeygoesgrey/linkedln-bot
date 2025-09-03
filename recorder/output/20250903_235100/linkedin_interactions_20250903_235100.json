@@ -1,0 +1,1438 @@
+[
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/",
+    "title": "LinkedIn: Log In or Sign Up",
+    "timestamp": 1756939872077.1304
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Choose a topic to learn about",
+    "is_enabled": true,
+    "attributes": {
+      "class": "dropdown-to-modal learning-cta__dropdown-modal"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939877725.0935
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939880558.9092
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939882722.4958
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939884807.0906
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939886903.7854
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939888989.6055
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939891070.081
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939893151.0825
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939895239.9148
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939897320.8213
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939899399.5037
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939901485.7896
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939903573.7512
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/login",
+    "title": "LinkedIn Login, Sign in | LinkedIn",
+    "timestamp": 1756939905668.7983
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939939029.6208
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post\nVideo\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__closed-share-box artdeco-card"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__top-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__avatar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Video\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry-toolbar__wrapper share-box-feed-entry__tool-bar"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939942515.2214
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post\nVideo\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__closed-share-box artdeco-card"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__top-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__avatar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Video\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry-toolbar__wrapper share-box-feed-entry__tool-bar"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939945173.5564
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post\nVideo\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__closed-share-box artdeco-card"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__top-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__avatar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Video\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry-toolbar__wrapper share-box-feed-entry__tool-bar"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939948221.869
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post\nVideo\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__closed-share-box artdeco-card"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__top-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__avatar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Video\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry-toolbar__wrapper share-box-feed-entry__tool-bar"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939950886.515
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post\nVideo\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__closed-share-box artdeco-card"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__top-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__avatar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Video\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry-toolbar__wrapper share-box-feed-entry__tool-bar"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939953503.412
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post\nVideo\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__closed-share-box artdeco-card"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__top-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__avatar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Video\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry-toolbar__wrapper share-box-feed-entry__tool-bar"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939956305.1106
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'media')]",
+    "tag_name": "button",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-promoted-detour-button",
+      "aria-label": "Add media",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Joseph Edomobi\nPost to Anyone\n\nWhat do you want to",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Joseph Edomobi\nPost to Anyone",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember206",
+      "class": "artdeco-modal__header ember-view share-box-v2__modal-redesigned-header"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "What do you want to talk about?\nOpen Emoji Keyboar",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-creation-state\n      share-creation-state__share-box-v2\n      share-creation-state__share-box-v2--redesigned-detours"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box_actions"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post\nVideo\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__closed-share-box artdeco-card"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__top-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__avatar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Video\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry-toolbar__wrapper share-box-feed-entry__tool-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember204",
+      "class": "artdeco-modal-overlay artdeco-modal-overlay--layer-default artdeco-modal-overlay--is-top-layer  ember-view"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Joseph Edomobi\nPost to Anyone",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember206",
+      "class": "artdeco-modal__header ember-view share-box-v2__modal-redesigned-header"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "What do you want to talk about?\nOpen Emoji Keyboar",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember213",
+      "class": "artdeco-modal__content p0 ember-view"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[@role='dialog']",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939961145.5264
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'media')]",
+    "tag_name": "button",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-promoted-detour-button",
+      "aria-label": "Add media",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Joseph Edomobi\nPost to Anyone\ntesting \nOpen Emoji ",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Joseph Edomobi\nPost to Anyone",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember206",
+      "class": "artdeco-modal__header ember-view share-box-v2__modal-redesigned-header"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "testing m\nOpen Emoji Keyboard\nPost",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-creation-state\n      share-creation-state__share-box-v2\n      share-creation-state__share-box-v2--redesigned-detours"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box_actions"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post\nVideo\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__closed-share-box artdeco-card"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__top-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__avatar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Video\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry-toolbar__wrapper share-box-feed-entry__tool-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember204",
+      "class": "artdeco-modal-overlay artdeco-modal-overlay--layer-default artdeco-modal-overlay--is-top-layer  ember-view"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Joseph Edomobi\nPost to Anyone",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember206",
+      "class": "artdeco-modal__header ember-view share-box-v2__modal-redesigned-header"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "testing my ai \nOpen Emoji Keyboard\nPost",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember213",
+      "class": "artdeco-modal__content p0 ember-view"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[@role='dialog']",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939965741.6028
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'media')]",
+    "tag_name": "button",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-promoted-detour-button",
+      "aria-label": "Add media",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Joseph Edomobi\nPost to Anyone\ntesting my ai bot wi",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Joseph Edomobi\nPost to Anyone",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember206",
+      "class": "artdeco-modal__header ember-view share-box-v2__modal-redesigned-header"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "testing my ai bot with image\nOpen Emoji Keyboard\nP",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-creation-state\n      share-creation-state__share-box-v2\n      share-creation-state__share-box-v2--redesigned-detours"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box_actions"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post\nVideo\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__closed-share-box artdeco-card"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__top-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__avatar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Video\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry-toolbar__wrapper share-box-feed-entry__tool-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember204",
+      "class": "artdeco-modal-overlay artdeco-modal-overlay--layer-default artdeco-modal-overlay--is-top-layer  ember-view"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Joseph Edomobi\nPost to Anyone",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember206",
+      "class": "artdeco-modal__header ember-view share-box-v2__modal-redesigned-header"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "testing my ai bot with image \nOpen Emoji Keyboard\n",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember213",
+      "class": "artdeco-modal__content p0 ember-view"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[@role='dialog']",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939970415.2715
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//input[@type='file']",
+    "tag_name": "input",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "id": "media-editor-file-selector__file-input",
+      "class": "media-editor-file-selector__upload-media-input visually-hidden",
+      "type": "file"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nEditor\nSelect files to begin",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      share-box-v2__modal-height-full",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Editor\nSelect files to begin\nShare images or a sin",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Back\nNext",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-footer\n        "
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Back\nNext",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-footer__main-actions"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post\nVideo\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__closed-share-box artdeco-card"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__top-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__avatar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Video\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry-toolbar__wrapper share-box-feed-entry__tool-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nEditor\nSelect files to begin",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember204",
+      "class": "artdeco-modal-overlay artdeco-modal-overlay--layer-default artdeco-modal-overlay--is-top-layer  ember-view"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nEditor\nSelect files to begin",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      share-box-v2__modal-height-full",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Editor",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember248",
+      "class": "artdeco-modal__header ember-view"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Select files to begin\nShare images or a single vid",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember249",
+      "class": "artdeco-modal__content p0 ember-view"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[@role='dialog']",
+    "tag_name": "div",
+    "text": "Dialog content start.\nEditor\nSelect files to begin",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      share-box-v2__modal-height-full",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939974324.76
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'media')]",
+    "tag_name": "button",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember295",
+      "class": "share-creation-state__preview-container-btn artdeco-button artdeco-button--circle artdeco-button--muted artdeco-button--1 artdeco-button--primary ember-view",
+      "aria-label": "Edit media preview",
+      "type": "submit"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Joseph Edomobi\nPost to Anyone\ntesting my ai bot wi",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Joseph Edomobi\nPost to Anyone",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember287",
+      "class": "artdeco-modal__header ember-view share-box-v2__modal-redesigned-header"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "testing my ai bot with image \nRemove media\nOpen Em",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-creation-state\n      share-creation-state__share-box-v2\n      share-creation-state__share-box-v2--redesigned-detours"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box_actions"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post\nVideo\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__closed-share-box artdeco-card"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__top-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__avatar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Video\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry-toolbar__wrapper share-box-feed-entry__tool-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember204",
+      "class": "artdeco-modal-overlay artdeco-modal-overlay--layer-default artdeco-modal-overlay--is-top-layer  ember-view"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "Joseph Edomobi\nPost to Anyone",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember287",
+      "class": "artdeco-modal__header ember-view share-box-v2__modal-redesigned-header"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'modal')]",
+    "tag_name": "div",
+    "text": "testing my ai bot with image \nRemove media\nOpen Em",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember294",
+      "class": "artdeco-modal__content p0 ember-view"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[@role='dialog']",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939978964.6187
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'media')]",
+    "tag_name": "button",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember295",
+      "class": "share-creation-state__preview-container-btn artdeco-button artdeco-button--circle artdeco-button--muted artdeco-button--1 artdeco-button--primary ember-view",
+      "aria-label": "Edit media preview",
+      "type": "submit"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Dialog content start.\nJoseph Edomobi\nPost to Anyon",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-modal artdeco-modal--layer-default share-box-v2__modal share-box-v2__modal-phoenix-redesign\n      ",
+      "role": "dialog"
+    }
+  },
+  {
+    "action_type": "PAGE_STATE",
+    "url": "https://www.linkedin.com/feed/",
+    "title": "(15) Feed | LinkedIn",
+    "timestamp": 1756939982474.0554
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'Post')]",
+    "tag_name": "button",
+    "text": "Dismiss",
+    "is_enabled": true,
+    "attributes": {
+      "id": "ember318",
+      "class": "artdeco-toast-item__dismiss artdeco-button artdeco-button--circle artdeco-button--muted artdeco-button--1 artdeco-button--tertiary ember-view",
+      "aria-label": "Dismiss “Post successful.” notification 1 of 1.",
+      "type": "submit"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//button[contains(@aria-label, 'photo')]",
+    "tag_name": "button",
+    "text": "Photo",
+    "is_enabled": true,
+    "attributes": {
+      "class": "artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary share-box-feed-entry-toolbar__item\n          image-detour-btn",
+      "aria-label": "Add a photo",
+      "type": "button"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post\nVideo\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__closed-share-box artdeco-card"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Start a post",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__top-bar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry__avatar"
+    }
+  },
+  {
+    "action_type": "VISIBLE_ELEMENT",
+    "xpath": "//div[contains(@class, 'share-box')]",
+    "tag_name": "div",
+    "text": "Video\nPhoto\nWrite article",
+    "is_enabled": true,
+    "attributes": {
+      "class": "share-box-feed-entry-toolbar__wrapper share-box-feed-entry__tool-bar"
+    }
+  }
+]

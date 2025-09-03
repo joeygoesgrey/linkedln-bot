@@ -72,6 +72,16 @@ Common flags:
 - `--debug`: Enable verbose logging.
 
 On success, the used topic is removed from the file.
+ 
+### Post with images
+ 
+Place image files under a directory (e.g., `static/`) and run:
+ 
+```bash
+python main.py --topics-file Topics.txt --images-dir static --headless --debug
+```
+ 
+The bot selects up to 3 images at random to include alongside the text post.
 
 ## Recorder (Headful)
 

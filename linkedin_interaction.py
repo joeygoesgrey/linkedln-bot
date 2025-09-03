@@ -742,8 +742,25 @@ class LinkedInInteraction:
                 file_input.send_keys(image_paths_str)
                 logging.info(f"Sent image paths to file input: {abs_image_paths}")
                 
-                # Wait for upload completion and handle Next/Done buttons
-                self.random_delay(3, 5)
+                # Wait for upload completion: prefer detecting previews/thumbnails
+                preview_selectors = [
+                    "//div[contains(@class,'image') or contains(@class,'media') or contains(@class,'preview')]//img",
+                    "//div[contains(@class,'media-editor')]//img",
+                    "//img[contains(@src,'data:') or contains(@src,'media')]",
+                ]
+                uploaded = False
+                for sel in preview_selectors:
+                    try:
+                        WebDriverWait(self.driver, config.ELEMENT_TIMEOUT).until(
+                            EC.presence_of_element_located((By.XPATH, sel))
+                        )
+                        logging.info(f"Detected uploaded media preview via selector: {sel}")
+                        uploaded = True
+                        break
+                    except Exception:
+                        continue
+                if not uploaded:
+                    self.random_delay(3, 5)
                 
                 # Dismiss any overlays that might have appeared during upload
                 self.dismiss_overlays()
@@ -781,7 +798,9 @@ class LinkedInInteraction:
             "button.image-detour-btn",
             "button[aria-label='Add a photo']",
             "//button[contains(@aria-label, 'photo')]",
-            "//button[contains(@title, 'Add a photo')]"
+            "//button[contains(@title, 'Add a photo')]",
+            # Composer footer tray
+            "//button[contains(@aria-label, 'Add to your post')]",
         ]
         
         # New UI selectors from recorded interactions
@@ -789,7 +808,10 @@ class LinkedInInteraction:
             "//button[.//span[contains(@class, 'share-promoted-detour-button__icon-container')]//*[contains(@data-test-icon, 'image-medium')]]",
             "//button[contains(@aria-label, 'Add media')]",
             "//li[contains(@class, 'artdeco-carousel__item')]//button[.//svg[contains(@data-test-icon, 'image')]]",
-            ".share-creation-state__promoted-detour-button-item button"
+            ".share-creation-state__promoted-detour-button-item button",
+            # Generic image icon button inside composer
+            "//button[.//svg[contains(@data-test-icon, 'image')]]",
+            "//button[.//*[local-name()='svg' and contains(@data-test-icon,'image')]]",
         ]
         
         # Combine both sets of selectors
@@ -826,6 +848,8 @@ class LinkedInInteraction:
             "input[id='media-editor-file-selector__file-input']",
             "//input[@id='media-editor-file-selector__file-input']",
             "//input[contains(@class, 'media-editor-file-selector__upload-media-input')]",
+            # Generic within composer/modal scopes
+            "//div[contains(@class,'share') or contains(@class,'media') or contains(@class,'editor')]//input[@type='file']",
         ]
     
         # Add legacy selectors as backups

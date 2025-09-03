@@ -1,0 +1,19 @@
+LinkedIn Interaction Recorder - Summary Report
+==================================================
+
+Recording date: 2025-09-03 23:53:03
+Total interactions recorded: 147
+Clicks: 0
+Text inputs: 0
+File uploads: 0
+
+Click Sequence Summary:
+--------------------------------------------------
+
+Selectors for LinkedIn Automation:
+--------------------------------------------------
+Based on your interactions, consider using these selectors:
+
+File Input Selectors (visible elements):
+- XPath: //input[@type='file']
+
