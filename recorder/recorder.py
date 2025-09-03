@@ -38,6 +38,8 @@ class LinkedInRecorder:
         # Create per-session output directories
         self.start_time = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.session_dir = Path("recorder/output") / self.start_time
+        # Ensure the session directory exists before configuring file logging
+        self.session_dir.mkdir(parents=True, exist_ok=True)
         # Control screenshots via env (default: disabled)
         self.take_screenshots = str(os.getenv("RECORDER_TAKE_SCREENSHOTS", "false")).lower() in ("1", "true", "yes", "on")
         self.screenshot_dir = self.session_dir / "screenshots"
