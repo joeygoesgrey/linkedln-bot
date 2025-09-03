@@ -20,19 +20,13 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import WebDriverException, NoSuchWindowException
 import undetected_chromedriver as uc
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("linkedin_recorder.log"),
-        logging.StreamHandler()
-    ]
-)
+# Basic console logging; per-session file logging is configured in __init__
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 class LinkedInRecorder:
     """
@@ -40,12 +34,29 @@ class LinkedInRecorder:
     """
     
     def __init__(self):
-        """Initialize the recorder with a non-headless browser."""
+        """Initialize the recorder and session outputs (headful)."""
+        # Create per-session output directories
+        self.start_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.session_dir = Path("recorder/output") / self.start_time
+        self.screenshot_dir = self.session_dir / "screenshots"
+        self.screenshot_dir.mkdir(parents=True, exist_ok=True)
+
+        # Reconfigure logging to include a session file
+        root = logging.getLogger()
+        for h in list(root.handlers):
+            root.removeHandler(h)
+        root.setLevel(logging.INFO)
+        formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        file_handler = logging.FileHandler(self.session_dir / "recorder.log")
+        file_handler.setFormatter(formatter)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(formatter)
+        root.addHandler(file_handler)
+        root.addHandler(stream_handler)
+
+        # Start driver and state
         self.setup_driver()
         self.interaction_log = []
-        self.start_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.screenshot_dir = Path(f"recorder_screenshots_{self.start_time}")
-        self.screenshot_dir.mkdir(exist_ok=True)
         
     def setup_driver(self):
         """Set up the Chrome WebDriver for a headful recording session.
@@ -245,14 +256,28 @@ class LinkedInRecorder:
         try:
             # Start collecting logs periodically
             while True:
-                self.collect_logs()
-                self.take_screenshot(f"recording_{len(self.interaction_log)}")
+                alive = self.collect_logs()
+                if not alive:
+                    logging.info("Browser window appears closed; stopping recorder loop.")
+                    break
+                try:
+                    self.take_screenshot(f"recording_{len(self.interaction_log)}")
+                except Exception:
+                    # Ignore screenshot errors; continue gathering
+                    pass
                 time.sleep(2)  # Check logs every 2 seconds
         except KeyboardInterrupt:
             logging.info("Recording stopped by user")
-            self.save_results()
         finally:
-            self.driver.quit()
+            # Always try to save results, even if the browser has closed
+            try:
+                self.save_results()
+            except Exception as e:
+                logging.error(f"Failed to save results: {e}")
+            try:
+                self.driver.quit()
+            except Exception:
+                pass
 
     def _find_local_chromedriver(self):
         """Locate a locally installed chromedriver binary if available."""
@@ -286,7 +311,7 @@ class LinkedInRecorder:
         return None
     
     def collect_logs(self):
-        """Collect browser logs for interaction tracking."""
+        """Collect browser logs for interaction tracking. Returns False if window is closed."""
         try:
             # Collect browser logs
             browser_logs = self.driver.get_log('browser')
@@ -322,9 +347,15 @@ class LinkedInRecorder:
             
             # Record visible elements of interest
             self.record_visible_elements()
+            return True
             
-        except Exception as e:
+        except (NoSuchWindowException, WebDriverException) as e:
+            msg = str(e).lower()
+            if 'no such window' in msg or 'disconnected' in msg or 'invalid session id' in msg:
+                logging.info("Browser window/session closed during recording")
+                return False
             logging.error(f"Error collecting logs: {str(e)}")
+            return True
     
     def record_visible_elements(self):
         """Record information about visible elements of interest."""
