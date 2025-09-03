@@ -1,6 +1,8 @@
-# LinkedIn Automation Bot
+# LinkedIn Automation Bot (feature/recorder-headful)
 
-Automate creating LinkedIn posts with optional AI‑generated content and media uploads. The bot uses Python, Selenium, and the Google Gemini API to generate and publish posts. A recorder tool is included to capture reliable UI selectors when the LinkedIn UI changes.
+Automate creating LinkedIn posts with optional AI‑generated content and media uploads. The bot uses Python, Selenium, and the Google Gemini API to generate and publish posts.
+
+This branch focuses on a headful recorder experience to capture the exact selectors and UI flows used when you manually create a LinkedIn post with text + image. Use it whenever LinkedIn’s UI shifts.
 
 ## Features
 
@@ -71,15 +73,23 @@ Common flags:
 
 On success, the used topic is removed from the file.
 
-## Recorder (Optional)
+## Recorder (Headful)
 
 If LinkedIn’s UI changes, run the recorder to capture fresh selectors:
 
 ```bash
+# Default (no screenshots)
 python recorder/recorder.py
+
+# With screenshots enabled
+RECORDER_TAKE_SCREENSHOTS=true python recorder/recorder.py
 ```
 
-It opens a visible browser. Manually log in, start a post, add text, upload media, and post. The tool saves a JSON log, a DOM snapshot, screenshots, and a summary report `linkedin_recorder_report_*.txt`.
+It opens a visible browser. Manually log in, start a post, add text, upload media, and post. Results are saved under `recorder/output/<timestamp>/`:
+- `recorder.log` (session log)
+- `linkedin_interactions_<ts>.json` (interactions)
+- `linkedin_recorder_report_<ts>.txt` (summary selectors for start‑post, editor, media, file input, and post/share button)
+- `linkedin_dom_snapshot_<ts>.json` (DOM snapshot; may be missing if window is already closed)
 
 ## Notes
 
