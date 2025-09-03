@@ -20,6 +20,7 @@ LINKEDIN_PASSWORD = os.getenv("LINKEDIN_PASSWORD")
 
 # Gemini API key
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+USE_GEMINI = os.getenv("USE_GEMINI", "true").lower() == "true"  # Allow disabling AI via flag/env
 
 # Browser settings
 HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"  # Run browser in headless mode, can be overridden

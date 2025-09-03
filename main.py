@@ -60,6 +60,12 @@ def setup_argument_parser():
         help="Disable image uploads even if --images-dir is provided."
     )
     
+    parser.add_argument(
+        "--no-ai",
+        action="store_true",
+        help="Disable AI generation and use local templates/randomized posts."
+    )
+    
     return parser
 
 
@@ -83,6 +89,10 @@ def main():
     # Set headless mode from arguments
     if args.headless:
         config.HEADLESS = True
+    
+    # Optionally disable AI generation
+    if args.no_ai:
+        config.USE_GEMINI = False
     
     logging.info("Starting LinkedIn Bot")
     logging.info(f"Topics file: {args.topics_file}")

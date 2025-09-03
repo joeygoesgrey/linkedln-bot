@@ -232,6 +232,10 @@ class ContentGenerator:
         logging.info(f"Post content preview: {default_post[:50]}...")
         
         try:
+            # Respect configuration to disable AI generation entirely
+            if hasattr(config, 'USE_GEMINI') and not config.USE_GEMINI:
+                logging.info("AI generation disabled (USE_GEMINI=False). Using local fallback content.")
+                return self._generate_local_post(topic, default_post)
             # First check if API key is available
             if not config.GEMINI_API_KEY:
                 logging.error("GEMINI_API_KEY not found. Using local fallback content.")

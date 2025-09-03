@@ -62,6 +62,9 @@ python main.py --topics-file Topics.txt --images-dir static --headless --debug
 
 # No topics file (uses built-in templates)
 python main.py --images-dir static --headless --debug
+
+# No topics file + skip AI (use local templates/randomized posts)
+python main.py --images-dir static --headless --debug --no-ai
 ```
 
 Common flags:
@@ -70,6 +73,7 @@ Common flags:
 - `--no-images`: Force text‑only posts even if `--images-dir` is provided.
 - `--headless`: Run Chrome in headless mode.
 - `--debug`: Enable verbose logging.
+- `--no-ai`: Skip AI generation and use local templates/randomized posts.
 
 On success, the used topic is removed from the file.
  
