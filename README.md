@@ -76,7 +76,7 @@ On success, the used topic is removed from the file.
 If LinkedIn’s UI changes, run the recorder to capture fresh selectors:
 
 ```bash
-python browser_recorder.py
+python recorder/recorder.py
 ```
 
 It opens a visible browser. Manually log in, start a post, add text, upload media, and post. The tool saves a JSON log, a DOM snapshot, screenshots, and a summary report `linkedin_recorder_report_*.txt`.

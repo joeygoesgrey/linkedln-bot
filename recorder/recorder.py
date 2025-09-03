@@ -308,8 +308,8 @@ class LinkedInRecorder:
     
     def save_results(self):
         """Save the recorded interactions to a file."""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"linkedin_interactions_{timestamp}.json"
+        timestamp = self.start_time
+        filename = str(self.session_dir / f"linkedin_interactions_{timestamp}.json")
         
         # Generate DOM snapshot
         try:
@@ -322,7 +322,7 @@ class LinkedInRecorder:
             """)
             
             # Save DOM snapshot
-            dom_filename = f"linkedin_dom_snapshot_{timestamp}.json"
+            dom_filename = str(self.session_dir / f"linkedin_dom_snapshot_{timestamp}.json")
             with open(dom_filename, 'w', encoding='utf-8') as f:
                 json.dump(dom_snapshot, f, ensure_ascii=False, indent=2)
             logging.info(f"DOM snapshot saved to {dom_filename}")
@@ -341,7 +341,7 @@ class LinkedInRecorder:
     
     def generate_summary_report(self, timestamp):
         """Generate a human-readable summary report of the interactions."""
-        report_filename = f"linkedin_recorder_report_{timestamp}.txt"
+        report_filename = str(self.session_dir / f"linkedin_recorder_report_{timestamp}.txt")
         
         clicks = [item for item in self.interaction_log if 'action_type' in item and item['action_type'] == 'CLICK']
         inputs = [item for item in self.interaction_log if 'action_type' in item and item['action_type'] == 'INPUT']
@@ -380,6 +380,14 @@ class LinkedInRecorder:
             f.write("-"*50 + "\n")
             f.write("Based on your interactions, consider using these selectors:\n\n")
             
+            # Extract 'Start a post' selectors
+            start_post = [c for c in clicks if 'text' in c and (c.get('text') or '').strip().lower() == 'start a post']
+            if start_post:
+                f.write("Start a Post Button Selectors:\n")
+                for btn in start_post:
+                    f.write(f"- XPath: {btn.get('xpath', 'unknown')}\n")
+                f.write("\n")
+
             # Extract post button selectors
             post_buttons = [c for c in clicks if 'text' in c and 'post' in c.get('text', '').lower()]
             if post_buttons:
@@ -394,6 +402,26 @@ class LinkedInRecorder:
                 f.write("Media Upload Button Selectors:\n")
                 for btn in media_buttons:
                     f.write(f"- XPath: {btn.get('xpath', 'unknown')}\n")
+                f.write("\n")
+
+            # Extract editor and file input from visible elements
+            editors = [v for v in self.interaction_log if v.get('action_type') == 'VISIBLE_ELEMENT' and (
+                (v.get('tag_name') == 'div' and ('textbox' in (v.get('attributes', {}) or {}).get('role', '').lower())) or
+                ('ql-editor' in ((v.get('attributes', {}) or {}).get('class', '') or '') )
+            )]
+            if editors:
+                f.write("Editor Selectors (visible elements):\n")
+                for v in editors:
+                    f.write(f"- XPath: {v.get('xpath', 'unknown')}\n")
+                f.write("\n")
+
+            file_inputs = [v for v in self.interaction_log if v.get('action_type') == 'VISIBLE_ELEMENT' and (
+                v.get('tag_name') == 'input' and 'file' in ((v.get('attributes', {}) or {}).get('type', '').lower())
+            )]
+            if file_inputs:
+                f.write("File Input Selectors (visible elements):\n")
+                for v in file_inputs:
+                    f.write(f"- XPath: {v.get('xpath', 'unknown')}\n")
                 f.write("\n")
                 
         logging.info(f"Summary report saved to {report_filename}")
