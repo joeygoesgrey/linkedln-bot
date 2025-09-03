@@ -68,10 +68,14 @@ class LinkedInRecorder:
         # Try a local chromedriver first
         local_driver = self._find_local_chromedriver()
 
-        # Build Selenium ChromeOptions (headful)
+        # Build Selenium ChromeOptions (headful) and enable console/perf logs
         sel_options = webdriver.ChromeOptions()
         sel_options.add_argument("--start-maximized")
         sel_options.add_argument("--disable-notifications")
+        try:
+            sel_options.set_capability("goog:loggingPrefs", {"performance": "ALL", "browser": "ALL"})
+        except Exception:
+            pass
         # If we can find a browser binary, set it explicitly
         browser_bin = self._find_browser_binary()
         if browser_bin:
