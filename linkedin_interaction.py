@@ -809,6 +809,8 @@ class LinkedInInteraction:
             "button[aria-label*='Add media']",
             "//button[contains(@aria-label, 'Add media')]",
             "//button[contains(normalize-space(.), 'Add media')]",
+            # Explicit class observed in your DOM snippet
+            "button.share-promoted-detour-button[aria-label='Add media']",
             # Recorded icon container in composer
             "//button[.//span[contains(@class, 'share-promoted-detour-button__icon-container')]//*[contains(@data-test-icon, 'image-medium')]]",
             # Carousel/icon buttons in new composer tray
@@ -867,6 +869,22 @@ class LinkedInInteraction:
         """
         logging.info("Finding file input element...")
     
+        # First, try scoping within the media editor modal
+        modal_roots = [
+            "//div[@role='dialog' and contains(@class,'share-box-v2__modal')]",
+            "//div[@role='dialog' and contains(@class,'share-box-modal')]",
+            "//div[contains(@class,'media-editor__container')]/ancestor::div[@role='dialog']",
+        ]
+        modal = None
+        for root in modal_roots:
+            try:
+                modal = WebDriverWait(self.driver, config.ELEMENT_TIMEOUT).until(
+                    EC.presence_of_element_located((By.XPATH, root))
+                )
+                break
+            except Exception:
+                continue
+
         # First priority: Direct ID-based selectors from latest UI data
         file_input_selectors = [
             "#media-editor-file-selector__file-input",
@@ -888,18 +906,54 @@ class LinkedInInteraction:
             "//div[contains(@class, 'image-selector')]//input[@type='file']",
         ])
     
-        # Try each selector
+        # Try each selector, scoping to modal when available
         for selector in file_input_selectors:
             selector_type = By.CSS_SELECTOR if not selector.startswith('//') else By.XPATH
             try:
                 logging.info(f"Trying file input selector: {selector}")
-                file_input = WebDriverWait(self.driver, config.SHORT_TIMEOUT).until(
-                    EC.presence_of_element_located((selector_type, selector))
-                )
+                if modal is not None and selector.startswith('//'):
+                    candidate = modal.find_element(By.XPATH, "." + selector[1:])
+                else:
+                    candidate = WebDriverWait(self.driver, config.SHORT_TIMEOUT).until(
+                        EC.presence_of_element_located((selector_type, selector))
+                    )
+                # Ensure it's visible and enabled for send_keys
+                try:
+                    self.driver.execute_script("arguments[0].classList.remove('visually-hidden'); arguments[0].disabled=false; arguments[0].style.cssText='display:block!important;visibility:visible!important;opacity:1!important;position:static!important;width:1px;height:1px';", candidate)
+                except Exception:
+                    pass
                 logging.info(f"Found file input element with selector: {selector}")
-                return file_input
+                return candidate
             except Exception as e:
                 logging.info(f"File input selector {selector} failed: {str(e)}")
+
+        # If we have the Upload from computer label, resolve its 'for' attribute to the input id
+        try:
+            logging.info("Trying to resolve file input via label 'Upload from computer'")
+            label = None
+            if modal is not None:
+                try:
+                    label = modal.find_element(By.XPATH, ".//label[contains(normalize-space(.), 'Upload from computer')]")
+                except Exception:
+                    label = None
+            if not label:
+                label = self.driver.find_element(By.XPATH, "//label[contains(normalize-space(.), 'Upload from computer')]")
+            input_id = label.get_attribute('for')
+            if input_id:
+                by_id_xpath = f"//input[@id='{input_id}']"
+                logging.info(f"Resolved input id via label: {input_id}")
+                if modal is not None:
+                    candidate = modal.find_element(By.XPATH, "." + by_id_xpath[1:])
+                else:
+                    candidate = self.driver.find_element(By.XPATH, by_id_xpath)
+                # Make it visible
+                try:
+                    self.driver.execute_script("arguments[0].classList.remove('visually-hidden'); arguments[0].disabled=false; arguments[0].style.cssText='display:block!important;visibility:visible!important;opacity:1!important;position:static!important;width:1px;height:1px';", candidate)
+                except Exception:
+                    pass
+                return candidate
+        except Exception as e:
+            logging.info(f"Label resolution failed: {e}")
         
         # If we couldn't find the input directly, try revealing hidden inputs with JavaScript
         logging.info("Trying JavaScript to reveal hidden file input...")
