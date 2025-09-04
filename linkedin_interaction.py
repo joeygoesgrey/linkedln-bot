@@ -769,8 +769,8 @@ class LinkedInInteraction:
                 # Look for any post-upload buttons like "Next" or "Done"
                 if self._handle_post_upload_buttons():
                     logging.info("Successfully processed post-upload buttons")
-                    # Dismiss overlays again after handling buttons
-                    self.dismiss_overlays()
+                    # Keep the share composer open; only clear toasts
+                    self.dismiss_overlays(preserve_share_modal=True)
                     return True
                 else:
                     # Even if no buttons found, the upload might be successful
