@@ -962,6 +962,69 @@ class LinkedInInteraction:
         except Exception as e:
             logging.warning(f"Error executing JavaScript to reveal file inputs: {str(e)}")
         
+        # Deep search across shadow roots for any input[type=file]
+        try:
+            logging.info("Searching shadow roots for file inputs")
+            deep_search_js = """
+                const results = [];
+                const seen = new Set();
+                function walk(node){
+                  if(!node || seen.has(node)) return;
+                  seen.add(node);
+                  if (node.querySelectorAll) {
+                    node.querySelectorAll('input[type="file"]').forEach(el => results.push(el));
+                  }
+                  const children = node.children ? Array.from(node.children) : [];
+                  for (const child of children) { walk(child); }
+                  if (node.shadowRoot) { walk(node.shadowRoot); }
+                }
+                walk(document);
+                return results;
+            """
+            inputs = self.driver.execute_script(deep_search_js) or []
+            logging.info(f"Deep search found {len(inputs)} candidate file inputs")
+            for idx, candidate in enumerate(inputs):
+                try:
+                    acc = (candidate.get_attribute('accept') or '').lower()
+                    cls = candidate.get_attribute('class') or ''
+                    idv = candidate.get_attribute('id') or ''
+                    if ('image' in acc) or (not acc):
+                        # Try to make it visible
+                        self.driver.execute_script("arguments[0].style.cssText='display:block!important;visibility:visible!important;opacity:1!important;position:static!important;width:1px;height:1px';", candidate)
+                        logging.info(f"Using shadow file input candidate idx={idx} id='{idv}' class='{cls}' accept='{acc}'")
+                        return candidate
+                except Exception:
+                    continue
+        except Exception as e:
+            logging.info(f"Deep shadow search failed: {e}")
+
+        # As a last attempt, search inside iframes
+        try:
+            logging.info("Scanning iframes for file input")
+            frames = self.driver.find_elements(By.TAG_NAME, 'iframe')
+            for i, frame in enumerate(frames):
+                try:
+                    self.driver.switch_to.frame(frame)
+                    logging.info(f"Switched to iframe index {i}")
+                    for selector in ["input[type='file']", "//input[@type='file']"]:
+                        try:
+                            by = By.CSS_SELECTOR if not selector.startswith('//') else By.XPATH
+                            fi = WebDriverWait(self.driver, 2).until(EC.presence_of_element_located((by, selector)))
+                            self.driver.execute_script("arguments[0].style.cssText='display:block!important;visibility:visible!important;opacity:1!important;position:static!important;width:1px;height:1px';", fi)
+                            logging.info(f"Found file input in iframe index {i} using selector {selector}")
+                            return fi
+                        except Exception:
+                            continue
+                except Exception as e:
+                    logging.debug(f"Error scanning iframe {i}: {e}")
+                finally:
+                    try:
+                        self.driver.switch_to.default_content()
+                    except Exception:
+                        pass
+        except Exception as e:
+            logging.info(f"Iframe scan failed: {e}")
+
         # Last resort: Create a new file input element if we couldn't find one
         logging.info("Creating a new file input element as a last resort")
         try:
