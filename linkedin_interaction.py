@@ -705,31 +705,31 @@ class LinkedInInteraction:
             
         try:
             logging.info(f"Uploading {len(image_paths)} images to LinkedIn post")
-            
+
             # Try to dismiss any potential overlays or modals first (preserve composer)
             self.random_delay()
             self.dismiss_overlays(preserve_share_modal=True)
             self.random_delay()
-            
-            # Find the media button using the _find_photo_button method
-            media_button = self._find_photo_button()
-            
-            if not media_button:
-                logging.error("Could not find media upload button")
-                return False
-                
-            # Click the media button to open file dialog
-            if not self._click_element_with_fallback(media_button, "media button"):
-                logging.error("Failed to click media button")
-                return False
-                
-            self.random_delay(2, 3)
-            
-            # Find and interact with the file input
+
+            # IMPORTANT: Avoid opening the native OS file picker. First try to locate
+            # the file input within the composer and send paths directly.
             file_input = self._find_file_input()
+
+            # If we couldn't find a file input yet, click the media button to reveal it
             if not file_input:
-                logging.error("Could not find file input element")
-                return False
+                media_button = self._find_photo_button()
+                if not media_button:
+                    logging.error("Could not find media upload button")
+                    return False
+                if not self._click_element_with_fallback(media_button, "media button"):
+                    logging.error("Failed to click media button")
+                    return False
+                self.random_delay(2, 3)
+                # Try to find the input again after revealing UI
+                file_input = self._find_file_input()
+                if not file_input:
+                    logging.error("Could not find file input element after opening media UI")
+                    return False
             
             # Send all image paths to the file input (convert to absolute paths)
             abs_image_paths = [str(Path(path).absolute()) for path in image_paths]
@@ -762,8 +762,8 @@ class LinkedInInteraction:
                 if not uploaded:
                     self.random_delay(3, 5)
                 
-                # Dismiss any overlays that might have appeared during upload
-                self.dismiss_overlays()
+                # Dismiss any overlays that might have appeared during upload (keep composer)
+                self.dismiss_overlays(preserve_share_modal=True)
                 self.random_delay(1, 2)
                 
                 # Look for any post-upload buttons like "Next" or "Done"
@@ -792,7 +792,7 @@ class LinkedInInteraction:
         Returns:
             WebElement or None: The found button or None if not found.
         """
-        # Legacy selectors for the old UI
+        # Legacy selectors for the old UI (fallbacks)
         photo_button_selectors = [
             "button.share-box-feed-entry-toolbar__item[aria-label='Add a photo']",
             "button.image-detour-btn",
@@ -803,10 +803,15 @@ class LinkedInInteraction:
             "//button[contains(@aria-label, 'Add to your post')]",
         ]
         
-        # New UI selectors from recorded interactions
+        # New UI selectors (preferred): focus on "Add media"
         modal_photo_button_selectors = [
-            "//button[.//span[contains(@class, 'share-promoted-detour-button__icon-container')]//*[contains(@data-test-icon, 'image-medium')]]",
+            # Direct aria-label/text variants for Add media
+            "button[aria-label*='Add media']",
             "//button[contains(@aria-label, 'Add media')]",
+            "//button[contains(normalize-space(.), 'Add media')]",
+            # Recorded icon container in composer
+            "//button[.//span[contains(@class, 'share-promoted-detour-button__icon-container')]//*[contains(@data-test-icon, 'image-medium')]]",
+            # Carousel/icon buttons in new composer tray
             "//li[contains(@class, 'artdeco-carousel__item')]//button[.//svg[contains(@data-test-icon, 'image')]]",
             ".share-creation-state__promoted-detour-button-item button",
             # Generic image icon button inside composer
@@ -814,8 +819,8 @@ class LinkedInInteraction:
             "//button[.//*[local-name()='svg' and contains(@data-test-icon,'image')]]",
         ]
         
-        # Combine both sets of selectors
-        all_selectors = photo_button_selectors + modal_photo_button_selectors
+        # Combine selectors, prioritizing modern "Add media" before older "Add a photo"
+        all_selectors = modal_photo_button_selectors + photo_button_selectors
 
         # Prefer searching within the composer modal
         composer_roots = [
