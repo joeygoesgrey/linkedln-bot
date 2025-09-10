@@ -32,16 +32,25 @@ class MediaMixin:
             self.random_delay()
             self.dismiss_overlays(preserve_share_modal=True)
             self.random_delay()
+
+            # Proactively open the media tray first; many UIs only create the input after this.
+            media_button = self._find_photo_button()
+            if media_button:
+                if not self._click_element_with_fallback(media_button, "Add media"):
+                    logging.warning("Click on 'Add media' failed; will try to find input directly")
+                else:
+                    self.random_delay(1, 2)
+
+            # Now find a file input to avoid native OS picker
             file_input = self._find_file_input()
             if not file_input:
-                media_button = self._find_photo_button()
-                if not media_button:
-                    logging.error("Could not find media upload button")
-                    return False
-                if not self._click_element_with_fallback(media_button, "media button"):
-                    logging.error("Failed to click media button")
-                    return False
-                self.random_delay(2, 3)
+                # Try clicking media button once more and re-scan
+                if media_button:
+                    try:
+                        self._click_element_with_fallback(media_button, "Add media (retry)")
+                        self.random_delay(1, 2)
+                    except Exception:
+                        pass
                 file_input = self._find_file_input()
                 if not file_input:
                     logging.error("Could not find file input element after opening media UI")
@@ -404,4 +413,3 @@ class MediaMixin:
         except Exception:
             pass
         return False
-
