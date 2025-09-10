@@ -105,7 +105,7 @@ class LinkedInBot:
         except Exception as e:
             logging.error("An error occurred while processing topics.", exc_info=True)
             
-    def post_custom_text(self, post_text, image_directory=None, mention_anchors=None, mention_names=None):
+    def post_custom_text(self, post_text, image_directory=None, mention_anchors=None, mention_names=None, image_paths=None):
         """
         Post a custom text (provided via CLI or API) with optional images and anchor-based mentions.
 
@@ -145,8 +145,15 @@ class LinkedInBot:
             processed_text = self._apply_anchor_mentions(post_text, mention_anchors, mention_names)
             logging.debug(f"Processed text after anchors: {processed_text}")
 
-            # Images to include
-            images_to_post = self._select_images(image_directory)
+            # Images to include: prefer explicit list from CLI if provided
+            images_to_post = []
+            if image_paths:
+                try:
+                    images_to_post = [str(Path(p).absolute()) for p in image_paths if Path(p).exists()]
+                except Exception:
+                    pass
+            if not images_to_post:
+                images_to_post = self._select_images(image_directory)
 
             # Ensure logged in
             if not self.linkedin.login():
