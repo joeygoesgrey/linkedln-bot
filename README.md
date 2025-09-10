@@ -88,6 +88,26 @@ python main.py --topics-file Topics.txt --images-dir static --headless --debug
  
 The bot selects up to 3 images at random to include alongside the text post.
 
+### Attach specific image files (CLI)
+
+You can attach one or more specific image files directly via CLI using `--image` (repeatable):
+
+```bash
+# Single image
+python main.py --post-text "Shipping day!" --image ./static/launch.png --headless --debug --no-ai
+
+# Multiple images: repeat --image
+python main.py --post-text "Look at these!" \
+  --image ./static/1.jpg \
+  --image ./static/2.jpg \
+  --image ./static/3.jpg \
+  --headless --debug --no-ai
+```
+
+Notes:
+- Supported formats: `.png`, `.jpg`, `.jpeg`, `.gif`.
+- If both `--image` and `--images-dir` are provided, `--image` takes precedence for direct posts.
+
 ### Tag people (mentions)
 
 You can tag people in a post by using the low‑level API directly. Example:
@@ -200,3 +220,4 @@ Contributions are welcome! Please open an issue or PR.
 
 - feat: add mentions (people tagging) support in `post_to_linkedin(text, image_paths=None, mentions=None)`
 - docs: usage example for mentions and README updates
+- feat: add `--image` CLI flag to attach explicit image files for direct posts

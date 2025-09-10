@@ -42,6 +42,14 @@ def setup_argument_parser():
         help="Path to a directory containing images to use for posts."
     )
     
+    # New: allow attaching explicit image files via CLI
+    parser.add_argument(
+        "--image",
+        action="append",
+        default=None,
+        help="Path to an image file to attach. Repeat to add multiple."
+    )
+    
     parser.add_argument(
         "--debug", 
         action="store_true",
@@ -134,7 +142,25 @@ def main():
     
     # Determine the images directory to use
     images_dir = None if args.no_images else args.images_dir
-    
+
+    # Collect explicit image files if provided
+    image_files = []
+    if not args.no_images and args.image:
+        for p in args.image:
+            try:
+                path = Path(p)
+                if not path.exists() or not path.is_file():
+                    logging.warning(f"--image not found or not a file: {p}")
+                    continue
+                if path.suffix.lower() not in (".png", ".jpg", ".jpeg", ".gif"):
+                    logging.warning(f"--image unsupported type (skipped): {p}")
+                    continue
+                image_files.append(str(path))
+            except Exception as e:
+                logging.warning(f"--image '{p}' skipped: {e}")
+        if image_files:
+            logging.info(f"Attaching {len(image_files)} image file(s) via --image")
+
     try:
         # Initialize the bot
         bot = LinkedInBot()
@@ -153,7 +179,13 @@ def main():
             if anchors and names and len(anchors) != len(names):
                 logging.warning("--mention-anchor and --mention-name count mismatch; ignoring both")
                 anchors, names = [], []
-            ok = bot.post_custom_text(args.post_text, images_dir, anchors, names)
+            ok = bot.post_custom_text(
+                args.post_text,
+                images_dir,
+                anchors,
+                names,
+                image_paths=image_files if image_files else None,
+            )
             # Close and return based on result
             bot.close()
             return 0 if ok else 1
