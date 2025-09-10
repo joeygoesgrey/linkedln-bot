@@ -11,6 +11,7 @@ import random
 import logging
 import time
 from pathlib import Path
+import re
 
 import config
 from driver import DriverFactory
@@ -104,6 +105,121 @@ class LinkedInBot:
         except Exception as e:
             logging.error("An error occurred while processing topics.", exc_info=True)
             
+    def post_custom_text(self, post_text, image_directory=None, mention_anchors=None, mention_names=None):
+        """
+        Post a custom text (provided via CLI or API) with optional images and anchor-based mentions.
+
+        Why:
+            Enables direct posting without relying on the topics/AI pipeline and
+            supports placing mentions at precise positions using simple anchors.
+
+        When:
+            Use when you want to post a specific message now, optionally tagging
+            people at positions determined by the three words immediately before
+            each tag location.
+
+        How:
+            - Optionally converts anchor/name pairs into inline mention
+              placeholders using the format '@{Display Name}' inserted right
+              after the first match of each anchor in the text.
+            - Selects images (if any) from the provided directory.
+            - Delegates to LinkedInInteraction.post_to_linkedin.
+
+        Args:
+            post_text (str): The exact text to publish.
+            image_directory (str | None): Directory containing images to add.
+            mention_anchors (list[str] | None): For each tag, the three-word
+                anchor immediately before where the tag should be inserted.
+            mention_names (list[str] | None): Display names corresponding to
+                each anchor. Must be same length as mention_anchors.
+
+        Returns:
+            bool: True if the post succeeded, False otherwise.
+        """
+        try:
+            if not isinstance(post_text, str) or not post_text.strip():
+                logging.error("post_custom_text requires a non-empty post_text string")
+                return False
+
+            # Apply anchors -> inline mention placeholders
+            processed_text = self._apply_anchor_mentions(post_text, mention_anchors, mention_names)
+            logging.debug(f"Processed text after anchors: {processed_text}")
+
+            # Images to include
+            images_to_post = self._select_images(image_directory)
+
+            # Ensure logged in
+            if not self.linkedin.login():
+                logging.error("Login failed before custom post")
+                return False
+
+            # Post
+            ok = self.linkedin.post_to_linkedin(processed_text, images_to_post)
+            if ok:
+                logging.info("Successfully posted custom text")
+            else:
+                logging.error("Failed to post custom text")
+            return ok
+
+        except Exception:
+            logging.error("An error occurred in post_custom_text.", exc_info=True)
+            return False
+
+    def _apply_anchor_mentions(self, post_text, anchors, names):
+        """
+        Insert inline mention placeholders based on (anchor, name) pairs.
+
+        Why:
+            The LinkedIn editor needs typed mentions (with typeahead). We support
+            this by converting anchor/name pairs to '@{Name}' placeholders that
+            our composer later resolves into real mentions.
+
+        When:
+            Before posting a custom text where the caller wants precise mention
+            positions but doesn't want to hand-edit placeholders.
+
+        How:
+            For each (anchor, name) pair, finds the first occurrence of the
+            anchor in a case-insensitive manner and inserts " @{Name}" directly
+            after it. Anchors are treated as three words and matched flexibly on
+            whitespace.
+
+        Args:
+            post_text (str): The source text.
+            anchors (list[str] | None): Three-word sequences preceding the tag.
+            names (list[str] | None): Display names for the mentions.
+
+        Returns:
+            str: Text with inline placeholders inserted where applicable.
+        """
+        try:
+            if not anchors or not names:
+                return post_text
+            if len(anchors) != len(names):
+                logging.warning("mention_anchors and mention_names length mismatch; ignoring anchors")
+                return post_text
+
+            result = post_text
+            for anchor, name in zip(anchors, names):
+                if not anchor or not name:
+                    continue
+                # Normalize anchor to three words and build a flexible regex
+                words = str(anchor).strip().split()
+                if len(words) == 0:
+                    continue
+                # Build pattern allowing variable whitespace between words
+                pattern = r"\b" + r"\s+".join(map(re.escape, words)) + r"\b"
+                replacement = r"\g<0> @{" + name + r"}"
+                try:
+                    result, n = re.subn(pattern, replacement, result, count=1, flags=re.IGNORECASE)
+                    if n == 0:
+                        logging.info(f"Anchor not found in text: '{anchor}'")
+                except Exception as re_err:
+                    logging.info(f"Anchor substitution failed for '{anchor}': {re_err}")
+            return result
+        except Exception as e:
+            logging.info(f"_apply_anchor_mentions failed; returning original text: {e}")
+            return post_text
     def _select_images(self, image_directory):
         """
         Select random images from the provided directory.

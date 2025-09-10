@@ -65,6 +65,25 @@ def setup_argument_parser():
         action="store_true",
         help="Disable AI generation and use local templates/randomized posts."
     )
+
+    # Direct post mode with text and anchor-based mentions
+    parser.add_argument(
+        "--post-text",
+        default=None,
+        help="Directly post this exact text instead of using topics/AI."
+    )
+    parser.add_argument(
+        "--mention-anchor",
+        action="append",
+        default=None,
+        help="Three-word anchor preceding where to insert a mention. Repeat for multiple."
+    )
+    parser.add_argument(
+        "--mention-name",
+        action="append",
+        default=None,
+        help="Display name to tag at the matching anchor. Repeat; order must match --mention-anchor."
+    )
     
     return parser
 
@@ -119,8 +138,27 @@ def main():
     try:
         # Initialize the bot
         bot = LinkedInBot()
-        
-        # Process topics and post to LinkedIn
+
+        # If direct post text was provided, use custom text path
+        if args.post_text:
+            logging.info("Direct post-text mode enabled")
+            anchors = args.mention_anchor or []
+            names = args.mention_name or []
+            if anchors and not names:
+                logging.warning("--mention-anchor provided without --mention-name; anchors ignored")
+                anchors, names = [], []
+            if names and not anchors:
+                logging.warning("--mention-name provided without --mention-anchor; names ignored")
+                anchors, names = [], []
+            if anchors and names and len(anchors) != len(names):
+                logging.warning("--mention-anchor and --mention-name count mismatch; ignoring both")
+                anchors, names = [], []
+            ok = bot.post_custom_text(args.post_text, images_dir, anchors, names)
+            # Close and return based on result
+            bot.close()
+            return 0 if ok else 1
+
+        # Otherwise process topics normally
         bot.process_topics(topics_file_to_use, images_dir)
         
         # Close the bot resources
