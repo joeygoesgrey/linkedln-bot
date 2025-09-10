@@ -52,6 +52,22 @@ CUSTOM_POSTS_FILE = os.getenv("CUSTOM_POSTS_FILE", "CustomPosts.txt")
 # Content limits
 MAX_POST_LENGTH = 1300
 
+# Mentions/typeahead capture (investigation/debugging)
+# Why:
+#     Enable saving the HTML of LinkedIn's mention suggestions popover
+#     (e.g., container with class 'editor-typeahead-fetch') so we can inspect
+#     structure and tune automation reliably when the UI changes.
+# When:
+#     During mention insertion flows; only if explicitly enabled via env.
+# How:
+#     LinkedInInteraction checks this flag and writes snapshots under
+#     TYPEAHEAD_CAPTURE_DIR when suggestions appear.
+CAPTURE_TYPEAHEAD_HTML = os.getenv("CAPTURE_TYPEAHEAD_HTML", "false").lower() == "true"
+TYPEAHEAD_CAPTURE_DIR = os.getenv(
+    "TYPEAHEAD_CAPTURE_DIR",
+    str(pathlib.Path(LOG_DIRECTORY) / "typeahead")
+)
+
 # LinkedIn selectors (can be updated if the UI changes)
 START_POST_SELECTORS = [
     "//button[contains(@class, 'share-box-feed-entry__trigger')]",
