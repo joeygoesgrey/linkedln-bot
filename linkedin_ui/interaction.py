@@ -19,6 +19,7 @@ from .mentions import MentionsMixin
 from .media import MediaMixin
 from .verify import VerifyMixin
 from .composer import ComposerMixin
+from .feed_actions import FeedActionsMixin
 
 
 class LinkedInInteraction(
@@ -28,6 +29,7 @@ class LinkedInInteraction(
     MediaMixin,
     VerifyMixin,
     ComposerMixin,
+    FeedActionsMixin,
     BaseInteraction,
 ):
     """
@@ -35,4 +37,3 @@ class LinkedInInteraction(
     """
 
     pass
-
