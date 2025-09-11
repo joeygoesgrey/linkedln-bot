@@ -108,6 +108,25 @@ Notes:
 - Supported formats: `.png`, `.jpg`, `.jpeg`, `.gif`.
 - If both `--image` and `--images-dir` are provided, `--image` takes precedence for direct posts.
 
+### How image uploads work (no OS dialog)
+
+- The bot clicks the composer’s “Add media” button, then locates the hidden `input[type=file]` inside the media tray (e.g., `#media-editor-file-selector__file-input`).
+- It sends your file paths directly to that input via Selenium, avoiding the native OS file picker.
+- Upload is considered successful when a media preview thumbnail is detected; some UIs show an extra step (Next/Done) which the bot clicks automatically.
+
+Example (mentions + image):
+
+```bash
+HEADLESS=false python main.py --debug --no-ai \
+  --post-text "Shoutout @{Ada Lovelace}!" \
+  --image ./static/justin_welsh.jpeg
+```
+
+Troubleshooting uploads:
+- Prefer a visible browser (`HEADLESS=false`) for the first run to confirm UI flow.
+- Check the log for lines like “Found photo button …”, “Found file input …”, and “Detected uploaded media preview …”.
+- If upload stalls, LinkedIn may have tweaked selectors. Run the recorder (`python recorder/recorder.py`) and open a post with media to refresh selectors.
+
 ### Tag people (mentions)
 
 You can tag people in a post by using the low‑level API directly. Example:
@@ -211,6 +230,7 @@ Config:
 - Add natural delays and avoid aggressive posting to reduce risk.
 - Legacy scripts are kept for reference under `legacy/` (e.g., `legacy/browser.py`, `legacy/utils.py`), but the supported path is `main.py`.
 - If the AI API is unavailable or returns no content, the bot now falls back to local generation: it first tries your `CUSTOM_POSTS_FILE` templates (supports `{topic}`), then builds a randomized post from phrase sets.
+- Dev note: the LinkedIn interaction code is now modular under `linkedin_ui/` (base, login, overlays, mentions, media, verify, composer), with a shim at `linkedin_interaction.py` for backwards imports.
 
 ## Contributing
 
