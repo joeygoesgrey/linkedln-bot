@@ -163,16 +163,24 @@ class FeedActionsMixin:
             self._click_element_with_fallback(editor, "comment editor")
         except Exception:
             pass
-        try:
-            editor.send_keys(text)
-        except Exception:
-            # JS fallback
-            try:
-                cleaned = text.replace('"', '\\"').replace("'", "\\'").replace("\n", "\\n")
-                self.driver.execute_script("arguments[0].innerHTML = arguments[1];", editor, cleaned)
-            except Exception as e:
-                logging.error(f"Failed to type comment: {e}")
+
+        # Support inline mention tokens '@{Display Name}' in comment text
+        if hasattr(self, "_post_text_contains_inline_mentions") and \
+           self._post_text_contains_inline_mentions(text):
+            if not self._compose_text_with_mentions(editor, text):
+                logging.error("Failed composing comment with mentions")
                 return False
+        else:
+            try:
+                editor.send_keys(text)
+            except Exception:
+                # JS fallback
+                try:
+                    cleaned = text.replace('"', '\\"').replace("'", "\\'").replace("\n", "\\n")
+                    self.driver.execute_script("arguments[0].innerHTML = arguments[1];", editor, cleaned)
+                except Exception as e:
+                    logging.error(f"Failed to type comment: {e}")
+                    return False
         self.random_delay(0.4, 0.8)
 
         # Click Post on the comment box
@@ -202,4 +210,3 @@ class FeedActionsMixin:
 
         self.random_delay(0.8, 1.5)
         return posted
-
