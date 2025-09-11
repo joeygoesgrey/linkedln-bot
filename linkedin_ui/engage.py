@@ -87,8 +87,8 @@ class EngageStreamMixin:
 
         try:
             while actions_done < max_actions:
-                bars = self._find_visible_action_bars(limit=10)
-                if not bars:
+                posts = self._find_visible_posts(limit=8)
+                if not posts:
                     # Scroll to load more
                     self._scroll_feed()
                     page_scrolls += 1
@@ -97,13 +97,10 @@ class EngageStreamMixin:
                         break
                     continue
 
-                # Dedupe bars by their post key (urn/text-hash)
-                for bar in bars:
+                # Process each visible post exactly once
+                for post_root in posts:
                     if actions_done >= max_actions:
                         break
-                    post_root = self._find_post_root_for_bar(bar)
-                    if not post_root:
-                        continue
                     # Make sure the post is centered and interactive
                     try:
                         self._scroll_into_view(post_root)
@@ -117,6 +114,26 @@ class EngageStreamMixin:
                         continue
                     if (not include_promoted) and self._is_promoted_post(post_root):
                         logging.debug(f"Skipping promoted post (urn={urn or 'unknown'})")
+                        processed.add(key)
+                        continue
+
+                    # Locate the action bar within this post
+                    bar = None
+                    try:
+                        bar = post_root.find_element(By.XPATH, ".//div[contains(@class,'feed-shared-social-action-bar')]")
+                    except Exception:
+                        # Fallback: search globally and ensure ancestry
+                        try:
+                            candidate = self.driver.find_element(By.XPATH, "(//div[contains(@class,'feed-shared-social-action-bar')])[1]")
+                            # Verify it's under this root
+                            try:
+                                candidate.find_element(By.XPATH, ".//ancestor::div[@id=concat('', arguments[0])]")
+                                bar = candidate
+                            except Exception:
+                                bar = None
+                        except Exception:
+                            bar = None
+                    if not bar:
                         processed.add(key)
                         continue
 
@@ -153,10 +170,17 @@ class EngageStreamMixin:
             return False
 
     # Helpers
-    def _find_visible_action_bars(self, limit=10):
-        bars = []
+    def _find_visible_posts(self, limit=8):
+        """Find visible post roots using stable container classes.
+
+        Prefers 'fie-impression-container' (observed on LinkedIn feed items),
+        falls back to legacy 'feed-shared-update-v2' roots.
+        """
+        posts = []
         selectors = [
-            "//div[contains(@class,'feed-shared-social-action-bar')]",
+            "//div[contains(@class,'fie-impression-container')]",
+            "//div[contains(@class,'feed-shared-update-v2__control-menu-container')]/div[contains(@class,'fie-impression-container')]",
+            "//div[contains(@class,'feed-shared-update-v2')]",
         ]
         for xp in selectors:
             try:
@@ -164,14 +188,14 @@ class EngageStreamMixin:
                 for el in found:
                     try:
                         if el.is_displayed():
-                            bars.append(el)
-                            if len(bars) >= limit:
-                                return bars
+                            posts.append(el)
+                            if len(posts) >= limit:
+                                return posts
                     except Exception:
                         continue
             except Exception:
                 continue
-        return bars
+        return posts
 
     def _find_post_root_for_bar(self, bar):
         # Try typical post containers as ancestors of the social action bar
