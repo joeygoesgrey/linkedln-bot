@@ -104,16 +104,23 @@ class MentionsMixin:
                         self._capture_typeahead_snapshot(name)
                 except Exception:
                     pass
-                self.random_delay(1, 2)
-                self._wait_for_mention_suggestions(name)
+                # Give the suggestions tray more time to populate
+                self.random_delay(1.2, 2.4)
+                self._wait_for_mention_suggestions(name, timeout=8)
 
-                verified = False
-                if self._select_first_mention_suggestion(post_area, expected_name=None, prefer_first=True):
-                    verified = self._verify_mention_entity(post_area, name, timeout=2)
-                if not verified:
-                    if self._wait_for_mention_suggestions(name, timeout=2):
-                        self._select_first_mention_suggestion(post_area, expected_name=name, prefer_first=False)
-                        verified = self._verify_mention_entity(post_area, name, timeout=2)
+                # Single selection attempt to avoid duplicate mentions
+                # Prefer an exact/best textual match if available
+                selected = self._select_first_mention_suggestion(
+                    post_area, expected_name=name, prefer_first=False
+                )
+                # If selection didn't occur, try top result once
+                if not selected:
+                    selected = self._select_first_mention_suggestion(
+                        post_area, expected_name=None, prefer_first=True
+                    )
+
+                # Verify mention entity; do not try again to avoid duplicates
+                verified = self._verify_mention_entity(post_area, name, timeout=4)
 
                 try:
                     self._cleanup_trailing_newline(post_area)
@@ -381,4 +388,3 @@ class MentionsMixin:
             except Exception:
                 continue
         return False
-

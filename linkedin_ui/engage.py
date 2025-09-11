@@ -117,6 +117,9 @@ class EngageStreamMixin:
                         processed.add(key)
                         continue
 
+                    # Mark this post as processed up front to avoid re-entry if the loop reruns
+                    processed.add(key)
+
                     # Locate the action bar within this post
                     bar = None
                     try:
@@ -147,14 +150,26 @@ class EngageStreamMixin:
 
                     # Comment
                     if mode in ("comment", "both") and actions_done < max_actions:
-                        if key not in commented and self._comment_from_bar(bar, comment_text, mention_author=mention_author, mention_position=mention_position):
+                        # Extract author once from this post root and pass down
+                        author_name = None
+                        if mention_author:
+                            try:
+                                author_name = self._extract_author_name(post_root)
+                            except Exception:
+                                author_name = None
+                        if key not in commented and self._comment_from_bar(
+                            bar,
+                            comment_text,
+                            mention_author=mention_author,
+                            mention_position=mention_position,
+                            author_name=author_name,
+                        ):
                             actions_done += 1
                             logging.info(f"Commented post urn={urn or 'unknown'} (actions={actions_done}/{max_actions})")
                             commented.add(key)
                             human_pause(dmin, dmax)
 
-                    # Mark this post as processed to avoid reprocessing.
-                    processed.add(key)
+                    # Done with this post; move on
 
                 # After processing current viewport, scroll to load more
                 if actions_done < max_actions:
@@ -310,7 +325,7 @@ class EngageStreamMixin:
         except Exception:
             return False
 
-    def _comment_from_bar(self, bar, text: str, mention_author: bool = False, mention_position: str = 'append') -> bool:
+    def _comment_from_bar(self, bar, text: str, mention_author: bool = False, mention_position: str = 'append', author_name: Optional[str] = None) -> bool:
         if not text:
             return False
         try:
@@ -362,11 +377,13 @@ class EngageStreamMixin:
 
             # Build comment text first (inject author mention if requested)
             if mention_author:
-                try:
-                    root = self._find_post_root_for_bar(bar)
-                    author = self._extract_author_name(root) if root is not None else None
-                except Exception:
-                    author = None
+                author = author_name
+                if author is None:
+                    try:
+                        root = self._find_post_root_for_bar(bar)
+                        author = self._extract_author_name(root) if root is not None else None
+                    except Exception:
+                        author = None
                 if author:
                     token = f"@{{{author}}}"
                     if token not in (text or ""):
