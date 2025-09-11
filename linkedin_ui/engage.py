@@ -290,16 +290,8 @@ class EngageStreamMixin:
                 self._click_element_with_fallback(editor, "comment editor (stream)")
             except Exception:
                 pass
-            try:
-                editor.send_keys(text)
-            except Exception:
-                try:
-                    cleaned = text.replace('"', '\\"').replace("'", "\\'").replace("\n", "\\n")
-                    self.driver.execute_script("arguments[0].innerHTML = arguments[1];", editor, cleaned)
-                except Exception:
-                    return False
 
-            # Build comment text (inject author mention if requested)
+            # Build comment text first (inject author mention if requested)
             if mention_author:
                 try:
                     root = self._find_post_root_for_bar(bar)
@@ -313,6 +305,21 @@ class EngageStreamMixin:
                             text = f"{token} {text}" if text else token
                         else:
                             text = f"{text} {token}" if text else token
+
+            # Now compose the comment, resolving any inline mention tokens
+            if hasattr(self, "_post_text_contains_inline_mentions") and \
+               self._post_text_contains_inline_mentions(text):
+                if not self._compose_text_with_mentions(editor, text):
+                    return False
+            else:
+                try:
+                    editor.send_keys(text)
+                except Exception:
+                    try:
+                        cleaned = text.replace('"', '\\"').replace("'", "\\'").replace("\n", "\\n")
+                        self.driver.execute_script("arguments[0].innerHTML = arguments[1];", editor, cleaned)
+                    except Exception:
+                        return False
 
             # Submit comment
             for sel in [
