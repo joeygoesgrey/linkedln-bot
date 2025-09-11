@@ -19,6 +19,7 @@ import time
 import logging
 import random
 from typing import Optional, Set
+import hashlib
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -78,7 +79,9 @@ class EngageStreamMixin:
         except Exception:
             pass
 
-        processed: Set[str] = set()  # URNs processed this run
+        processed: Set[str] = set()  # Post keys processed this run (urn or text-hash)
+        commented: Set[str] = set()  # Posts we have commented in this run
+        liked: Set[str] = set()      # Posts we have liked in this run
         actions_done = 0
         page_scrolls = 0
 
@@ -94,35 +97,47 @@ class EngageStreamMixin:
                         break
                     continue
 
+                # Dedupe bars by their post key (urn/text-hash)
                 for bar in bars:
                     if actions_done >= max_actions:
                         break
                     post_root = self._find_post_root_for_bar(bar)
                     if not post_root:
                         continue
+                    # Make sure the post is centered and interactive
+                    try:
+                        self._scroll_into_view(post_root)
+                        human_pause(0.3, 0.7)
+                    except Exception:
+                        pass
+
                     urn = self._extract_post_urn(post_root)
-                    if urn and urn in processed:
+                    key = self._post_dedupe_key(post_root, urn)
+                    if key in processed:
                         continue
                     if (not include_promoted) and self._is_promoted_post(post_root):
                         logging.debug(f"Skipping promoted post (urn={urn or 'unknown'})")
+                        processed.add(key)
                         continue
 
                     # Like
                     if mode in ("like", "both") and actions_done < max_actions:
-                        if self._like_from_bar(bar):
+                        if key not in liked and self._like_from_bar(bar):
                             actions_done += 1
                             logging.info(f"Liked post urn={urn or 'unknown'} (actions={actions_done}/{max_actions})")
+                            liked.add(key)
                             human_pause(dmin, dmax)
 
                     # Comment
                     if mode in ("comment", "both") and actions_done < max_actions:
-                        if self._comment_from_bar(bar, comment_text, mention_author=mention_author, mention_position=mention_position):
+                        if key not in commented and self._comment_from_bar(bar, comment_text, mention_author=mention_author, mention_position=mention_position):
                             actions_done += 1
                             logging.info(f"Commented post urn={urn or 'unknown'} (actions={actions_done}/{max_actions})")
+                            commented.add(key)
                             human_pause(dmin, dmax)
 
-                    if urn:
-                        processed.add(urn)
+                    # Mark this post as processed to avoid reprocessing.
+                    processed.add(key)
 
                 # After processing current viewport, scroll to load more
                 if actions_done < max_actions:
@@ -200,6 +215,31 @@ class EngageStreamMixin:
             pass
         return None
 
+    def _post_dedupe_key(self, root, urn: Optional[str]) -> str:
+        """Return a stable key for a post: URN if available, else hash of text snippet."""
+        if urn:
+            return urn
+        # Fallback: hash of actor + first 160 chars of text
+        actor = ""
+        try:
+            actor = self._extract_author_name(root) or ""
+        except Exception:
+            pass
+        text = ""
+        try:
+            snippet_nodes = root.find_elements(By.XPATH, 
+                ".//div[contains(@class,'update-components-text') or contains(@class,'feed-shared-inline-show-more-text')]//*[normalize-space()]"
+            )
+            for n in snippet_nodes:
+                t = (n.text or "").strip()
+                if t:
+                    text = t
+                    break
+        except Exception:
+            pass
+        key_src = (actor + "|" + text[:160]).strip() or str(id(root))
+        return hashlib.sha1(key_src.encode("utf-8", errors="ignore")).hexdigest()
+
     def _is_promoted_post(self, root) -> bool:
         # Look for a small "Promoted" label in header or within the root
         try:
@@ -226,7 +266,7 @@ class EngageStreamMixin:
                 ".//button[.//span[normalize-space()='Like']]",
             ]:
                 try:
-                    el = bar.find_element(By.XPATH, sel)
+                    el = WebDriverWait(bar, 3).until(EC.presence_of_element_located((By.XPATH, sel)))
                     if el and el.is_displayed():
                         btn = el
                         break
@@ -237,6 +277,11 @@ class EngageStreamMixin:
             pressed = (btn.get_attribute("aria-pressed") or "").lower() == "true"
             if pressed:
                 return False
+            # Ensure into view then click
+            try:
+                self._scroll_into_view(btn)
+            except Exception:
+                pass
             return self._click_element_with_fallback(btn, "Like (stream)")
         except Exception:
             return False
@@ -272,7 +317,7 @@ class EngageStreamMixin:
             ]
             for xp in candidates:
                 try:
-                    editor = bar.find_element(By.XPATH, xp)
+                    editor = WebDriverWait(bar, 4).until(EC.presence_of_element_located((By.XPATH, xp)))
                     if editor and editor.is_displayed():
                         break
                 except Exception:
@@ -321,16 +366,20 @@ class EngageStreamMixin:
                     except Exception:
                         return False
 
-            # Submit comment
+            # Submit comment (no Enter fallback to avoid duplicates)
             for sel in [
                 "//button[contains(@class,'comments-comment-box__submit-button')]",
                 "//button[.//span[normalize-space()='Post']]",
                 "//button[@data-control-name='submit_comment']",
             ]:
                 try:
-                    post_btn = WebDriverWait(self.driver, 2).until(
+                    post_btn = WebDriverWait(self.driver, 4).until(
                         EC.element_to_be_clickable((By.XPATH, sel))
                     )
+                    try:
+                        self._scroll_into_view(post_btn)
+                    except Exception:
+                        pass
                     if self._click_element_with_fallback(post_btn, "Submit comment (stream)"):
                         return True
                 except Exception:
@@ -388,3 +437,9 @@ class EngageStreamMixin:
             time.sleep(random.uniform(0.8, 1.6))
         except Exception:
             time.sleep(1)
+
+    def _scroll_into_view(self, el):
+        try:
+            self.driver.execute_script("arguments[0].scrollIntoView({block:'center'});", el)
+        except Exception:
+            pass
