@@ -104,6 +104,17 @@ def setup_argument_parser():
         default=None,
         help="Comment this text on the first visible post in your feed and exit."
     )
+    parser.add_argument(
+        "--mention-author",
+        action="store_true",
+        help="When commenting, automatically tag the post author."
+    )
+    parser.add_argument(
+        "--author-mention-position",
+        choices=["prepend", "append"],
+        default="append",
+        help="Where to place the author mention token in the comment text."
+    )
 
     # Engage stream (MVP): like/comment/both with defaults
     parser.add_argument(
@@ -218,7 +229,11 @@ def main():
             if args.like_first:
                 ok = ok and bot.linkedin.like_first_post()
             if args.comment_first:
-                ok = ok and bot.linkedin.comment_first_post(args.comment_first)
+                ok = ok and bot.linkedin.comment_first_post(
+                    args.comment_first,
+                    mention_author=args.mention_author,
+                    mention_position=args.author_mention_position,
+                )
             bot.close()
             return 0 if ok else 1
 
@@ -235,6 +250,8 @@ def main():
                 include_promoted=args.include_promoted,
                 delay_min=args.delay_min,
                 delay_max=args.delay_max,
+                mention_author=args.mention_author,
+                mention_position=args.author_mention_position,
             )
             bot.close()
             return 0 if ok else 1

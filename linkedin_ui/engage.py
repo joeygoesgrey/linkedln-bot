@@ -36,6 +36,8 @@ class EngageStreamMixin:
         include_promoted: bool = False,
         delay_min: Optional[float] = None,
         delay_max: Optional[float] = None,
+        mention_author: bool = False,
+        mention_position: str = 'append',
     ) -> bool:
         """
         Engage the feed by liking/commenting posts until limits are reached.
@@ -114,7 +116,7 @@ class EngageStreamMixin:
 
                     # Comment
                     if mode in ("comment", "both") and actions_done < max_actions:
-                        if self._comment_from_bar(bar, comment_text):
+                        if self._comment_from_bar(bar, comment_text, mention_author=mention_author, mention_position=mention_position):
                             actions_done += 1
                             logging.info(f"Commented post urn={urn or 'unknown'} (actions={actions_done}/{max_actions})")
                             human_pause(dmin, dmax)
@@ -239,7 +241,7 @@ class EngageStreamMixin:
         except Exception:
             return False
 
-    def _comment_from_bar(self, bar, text: str) -> bool:
+    def _comment_from_bar(self, bar, text: str, mention_author: bool = False, mention_position: str = 'append') -> bool:
         if not text:
             return False
         try:
@@ -297,6 +299,21 @@ class EngageStreamMixin:
                 except Exception:
                     return False
 
+            # Build comment text (inject author mention if requested)
+            if mention_author:
+                try:
+                    root = self._find_post_root_for_bar(bar)
+                    author = self._extract_author_name(root) if root is not None else None
+                except Exception:
+                    author = None
+                if author:
+                    token = f"@{{{author}}}"
+                    if token not in (text or ""):
+                        if (mention_position or 'append') == 'prepend':
+                            text = f"{token} {text}" if text else token
+                        else:
+                            text = f"{text} {token}" if text else token
+
             # Submit comment
             for sel in [
                 "//button[contains(@class,'comments-comment-box__submit-button')]",
@@ -315,10 +332,52 @@ class EngageStreamMixin:
             return False
         return False
 
+    def _extract_author_name(self, root) -> Optional[str]:
+        """Best-effort extraction of the post author's display name from a post root."""
+        if root is None:
+            return None
+        candidates = [
+            # Standard actor title area
+            ".//span[contains(@class,'update-components-actor__title')]//*[self::span or self::a][normalize-space()]",
+            # Meta link often wraps the title
+            ".//a[contains(@class,'update-components-actor__meta-link')]//*[normalize-space()]",
+            # Fallback: any profile link in header
+            ".//div[contains(@class,'update-components-actor__container')]//a[contains(@href,'/in/')][normalize-space()]",
+        ]
+        for xp in candidates:
+            try:
+                els = root.find_elements(By.XPATH, xp)
+                for el in els:
+                    try:
+                        if not el.is_displayed():
+                            continue
+                        name = (el.text or "").strip()
+                        # Clean extraneous whitespace
+                        name = " ".join(name.split())
+                        if name:
+                            return name
+                    except Exception:
+                        continue
+            except Exception:
+                continue
+        # As a last resort, try aria-label patterns and strip extras
+        try:
+            aria = root.get_attribute('aria-label') or ''
+            aria = aria.strip()
+            if aria:
+                # e.g., "View Mike Strives’ graphic link" -> take middle tokens
+                parts = aria.replace('’', "'").split()
+                if len(parts) >= 2:
+                    # Return the first two tokens as a guess
+                    guess = " ".join(parts[1:3]).strip()
+                    return guess if guess else None
+        except Exception:
+            pass
+        return None
+
     def _scroll_feed(self):
         try:
             self.driver.execute_script("window.scrollBy(0, Math.round(window.innerHeight*0.8));")
             time.sleep(random.uniform(0.8, 1.6))
         except Exception:
             time.sleep(1)
-
