@@ -161,6 +161,42 @@ Rules:
 - Use `@{Display Name}` to place a mention at that exact position.
 - Your own spaces/punctuation are preserved. If suggestions don’t appear, the bot falls back to literal `@name`.
 
+### Like and Comment (Feed)
+
+One‑shot helpers:
+
+- Like first post: `python main.py --debug --like-first`
+- Comment first post: `python main.py --debug --comment-first "Nice take!"`
+- Tag someone in a comment: `--comment-first "Thanks @{Ada Lovelace}!"`
+- Auto‑tag the post author: add `--mention-author` (optional `--author-mention-position prepend|append`, default append)
+
+Engage stream (MVP):
+
+```bash
+# Like 12 posts (default max-actions)
+python main.py --debug --engage-stream like
+
+# Comment 12 posts, tagging author automatically
+python main.py --debug --engage-stream comment \
+  --stream-comment "Great point!" \
+  --mention-author
+
+# Like + comment 12 posts
+python main.py --debug --engage-stream both \
+  --stream-comment "Great point!" \
+  --mention-author
+```
+
+Options:
+- `--max-actions N` (default 12)
+- `--include-promoted` (skip by default)
+- `--delay-min/--delay-max` human‑like delays
+
+De‑dupe & reliability:
+- The stream tracks posts per run using URNs or a text hash and will not comment twice on the same post in a session.
+- It checks the Like button state to avoid re‑liking.
+- Each target post is scrolled into view before clicking to reduce flaky misses.
+
 ### Direct CLI post text + anchors for tagging
 
 You can post a specific text via CLI and tell the bot where to insert tags by providing the three words that appear immediately before the tag location (the “anchor”). The bot converts anchors to inline mentions under the hood.
