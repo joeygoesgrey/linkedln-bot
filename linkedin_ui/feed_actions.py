@@ -96,7 +96,7 @@ class FeedActionsMixin:
         self.random_delay(0.5, 1.0)
         return True
 
-    def comment_first_post(self, text):
+    def comment_first_post(self, text, mention_author: bool = False, mention_position: str = 'append'):
         """
         Comment on the first visible post in the feed.
 
@@ -163,6 +163,21 @@ class FeedActionsMixin:
             self._click_element_with_fallback(editor, "comment editor")
         except Exception:
             pass
+
+        # If requested, append/prepend the author's mention token
+        if mention_author:
+            try:
+                root = self._find_post_root_for_bar(bar)
+                author = self._extract_author_name(root) if root is not None else None
+            except Exception:
+                author = None
+            if author:
+                token = f"@{{{author}}}"
+                if token not in (text or ""):
+                    if (mention_position or 'append') == 'prepend':
+                        text = f"{token} {text}" if text else token
+                    else:
+                        text = f"{text} {token}" if text else token
 
         # Support inline mention tokens '@{Display Name}' in comment text
         if hasattr(self, "_post_text_contains_inline_mentions") and \
