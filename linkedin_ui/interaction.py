@@ -20,6 +20,7 @@ from .media import MediaMixin
 from .verify import VerifyMixin
 from .composer import ComposerMixin
 from .feed_actions import FeedActionsMixin
+from .engage import EngageStreamMixin
 
 
 class LinkedInInteraction(
@@ -30,6 +31,7 @@ class LinkedInInteraction(
     VerifyMixin,
     ComposerMixin,
     FeedActionsMixin,
+    EngageStreamMixin,
     BaseInteraction,
 ):
     """

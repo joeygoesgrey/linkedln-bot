@@ -104,6 +104,41 @@ def setup_argument_parser():
         default=None,
         help="Comment this text on the first visible post in your feed and exit."
     )
+
+    # Engage stream (MVP): like/comment/both with defaults
+    parser.add_argument(
+        "--engage-stream",
+        choices=["like", "comment", "both"],
+        help="Continuously like/comment posts in your feed (MVP)."
+    )
+    parser.add_argument(
+        "--stream-comment",
+        default=None,
+        help="Comment text to use when --engage-stream is 'comment' or 'both'."
+    )
+    parser.add_argument(
+        "--max-actions",
+        type=int,
+        default=12,
+        help="Maximum number of actions to perform (default 12)."
+    )
+    parser.add_argument(
+        "--include-promoted",
+        action="store_true",
+        help="Include posts marked Promoted (default skips them)."
+    )
+    parser.add_argument(
+        "--delay-min",
+        type=float,
+        default=None,
+        help="Minimum human-like delay between actions (seconds)."
+    )
+    parser.add_argument(
+        "--delay-max",
+        type=float,
+        default=None,
+        help="Maximum human-like delay between actions (seconds)."
+    )
     
     return parser
 
@@ -184,6 +219,23 @@ def main():
                 ok = ok and bot.linkedin.like_first_post()
             if args.comment_first:
                 ok = ok and bot.linkedin.comment_first_post(args.comment_first)
+            bot.close()
+            return 0 if ok else 1
+
+        # Engage stream: like/comment/both continuously up to max-actions
+        if args.engage_stream:
+            if args.engage_stream in ("comment", "both") and not (args.stream_comment and args.stream_comment.strip()):
+                logging.error("--stream-comment is required for engage-stream 'comment' or 'both'")
+                bot.close()
+                return 1
+            ok = bot.linkedin.engage_stream(
+                mode=args.engage_stream,
+                comment_text=args.stream_comment,
+                max_actions=args.max_actions,
+                include_promoted=args.include_promoted,
+                delay_min=args.delay_min,
+                delay_max=args.delay_max,
+            )
             bot.close()
             return 0 if ok else 1
 
