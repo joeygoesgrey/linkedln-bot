@@ -92,6 +92,18 @@ def setup_argument_parser():
         default=None,
         help="Display name to tag at the matching anchor. Repeat; order must match --mention-anchor."
     )
+
+    # Feed actions: like/comment the first post on the feed
+    parser.add_argument(
+        "--like-first",
+        action="store_true",
+        help="Like the first visible post in your feed and exit."
+    )
+    parser.add_argument(
+        "--comment-first",
+        default=None,
+        help="Comment this text on the first visible post in your feed and exit."
+    )
     
     return parser
 
@@ -164,6 +176,16 @@ def main():
     try:
         # Initialize the bot
         bot = LinkedInBot()
+
+        # If direct feed actions were requested, run and exit
+        if args.like_first or args.comment_first:
+            ok = True
+            if args.like_first:
+                ok = ok and bot.linkedin.like_first_post()
+            if args.comment_first:
+                ok = ok and bot.linkedin.comment_first_post(args.comment_first)
+            bot.close()
+            return 0 if ok else 1
 
         # If direct post text was provided, use custom text path
         if args.post_text:
