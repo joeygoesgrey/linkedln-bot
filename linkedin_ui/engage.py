@@ -20,6 +20,7 @@ import logging
 import random
 from typing import Optional, Set
 import hashlib
+import re
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -375,7 +376,23 @@ class EngageStreamMixin:
             except Exception:
                 pass
 
-            # Build comment text first (inject author mention if requested)
+            # Stage A: compose base text (without author token)
+            base_text = text or ""
+            if hasattr(self, "_post_text_contains_inline_mentions") and \
+               self._post_text_contains_inline_mentions(base_text):
+                if not self._compose_text_with_mentions(editor, base_text):
+                    return False
+            else:
+                try:
+                    editor.send_keys(base_text)
+                except Exception:
+                    try:
+                        cleaned = base_text.replace('"', '\\"').replace("'", "\\'").replace("\n", "\\n")
+                        self.driver.execute_script("arguments[0].innerHTML = arguments[1];", editor, cleaned)
+                    except Exception:
+                        return False
+
+            # Stage B: insert author mention as a separate step
             if mention_author:
                 author = author_name
                 if author is None:
@@ -385,27 +402,13 @@ class EngageStreamMixin:
                     except Exception:
                         author = None
                 if author:
-                    token = f"@{{{author}}}"
-                    if token not in (text or ""):
-                        if (mention_position or 'append') == 'prepend':
-                            text = f"{token} {text}" if text else token
-                        else:
-                            text = f"{text} {token}" if text else token
-
-            # Now compose the comment, resolving any inline mention tokens
-            if hasattr(self, "_post_text_contains_inline_mentions") and \
-               self._post_text_contains_inline_mentions(text):
-                if not self._compose_text_with_mentions(editor, text):
-                    return False
-            else:
-                try:
-                    editor.send_keys(text)
-                except Exception:
                     try:
-                        cleaned = text.replace('"', '\\"').replace("'", "\\'").replace("\n", "\\n")
-                        self.driver.execute_script("arguments[0].innerHTML = arguments[1];", editor, cleaned)
+                        self._insert_mentions(editor, [author], leading_space=True)
                     except Exception:
-                        return False
+                        try:
+                            editor.send_keys(f" @{author}")
+                        except Exception:
+                            pass
 
             # Submit comment (no Enter fallback to avoid duplicates)
             for sel in [
@@ -430,47 +433,56 @@ class EngageStreamMixin:
         return False
 
     def _extract_author_name(self, root) -> Optional[str]:
-        """Best-effort extraction of the post author's display name from a post root."""
+        """Extract the author's display name from the post root, normalized to avoid duplicates."""
         if root is None:
             return None
-        candidates = [
-            # Standard actor title area
-            ".//span[contains(@class,'update-components-actor__title')]//*[self::span or self::a][normalize-space()]",
-            # Meta link often wraps the title
-            ".//a[contains(@class,'update-components-actor__meta-link')]//*[normalize-space()]",
-            # Fallback: any profile link in header
+        paths = [
+            ".//span[contains(@class,'update-components-actor__title')]//span[normalize-space() and not(contains(@class,'visually-hidden'))]",
             ".//div[contains(@class,'update-components-actor__container')]//a[contains(@href,'/in/')][normalize-space()]",
+            ".//a[contains(@class,'update-components-actor__meta-link')]//*[normalize-space() and not(contains(@class,'visually-hidden'))]",
         ]
-        for xp in candidates:
+        for xp in paths:
             try:
-                els = root.find_elements(By.XPATH, xp)
-                for el in els:
-                    try:
-                        if not el.is_displayed():
-                            continue
-                        name = (el.text or "").strip()
-                        # Clean extraneous whitespace
-                        name = " ".join(name.split())
-                        if name:
-                            return name
-                    except Exception:
+                nodes = root.find_elements(By.XPATH, xp)
+                for n in nodes:
+                    if not n.is_displayed():
                         continue
+                    txt = (n.text or "").strip()
+                    txt = self._normalize_person_name(txt)
+                    if txt:
+                        return txt
             except Exception:
                 continue
-        # As a last resort, try aria-label patterns and strip extras
         try:
-            aria = root.get_attribute('aria-label') or ''
-            aria = aria.strip()
+            aria = (root.get_attribute('aria-label') or '').strip()
             if aria:
-                # e.g., "View Mike Strives’ graphic link" -> take middle tokens
-                parts = aria.replace('’', "'").split()
-                if len(parts) >= 2:
-                    # Return the first two tokens as a guess
-                    guess = " ".join(parts[1:3]).strip()
-                    return guess if guess else None
+                for key in ("by ", "for "):
+                    if key in aria:
+                        cand = aria.split(key, 1)[1].strip()
+                        cand = re.split(r"[|•·\-–—]|\s{2,}", cand)[0].strip()
+                        cand = self._normalize_person_name(cand)
+                        if cand:
+                            return cand
         except Exception:
             pass
         return None
+
+    def _normalize_person_name(self, name: str) -> str:
+        """Normalize a person name and remove duplicated phrases."""
+        if not name:
+            return ""
+        s = " ".join(name.split())
+        for sep in ("•", "|", "·"):
+            s = s.replace(sep, " ")
+        s = " ".join(s.split())
+        tokens = s.split()
+        n = len(tokens)
+        if n >= 2 and n % 2 == 0 and tokens[: n // 2] == tokens[n // 2 :]:
+            return " ".join(tokens[: n // 2])
+        for k in range(min(4, n // 2), 0, -1):
+            if n >= 2 * k and tokens[:k] == tokens[k:2 * k] and (n == 2 * k or tokens[2 * k :] == []):
+                return " ".join(tokens[:k])
+        return s
 
     def _scroll_feed(self):
         try:
