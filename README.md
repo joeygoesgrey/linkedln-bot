@@ -268,6 +268,51 @@ Config:
 - If the AI API is unavailable or returns no content, the bot now falls back to local generation: it first tries your `CUSTOM_POSTS_FILE` templates (supports `{topic}`), then builds a randomized post from phrase sets.
 - Dev note: the LinkedIn interaction code is now modular under `linkedin_ui/` (base, login, overlays, mentions, media, verify, composer), with a shim at `linkedin_interaction.py` for backwards imports.
 
+## Project Status
+
+Where we are now (feed engage MVP)
+- Supports one‑shot like/comment on the first post and a stream mode to like/comment multiple posts (`--engage-stream`).
+- Skips posts marked “Promoted” by default (opt‑in with `--include-promoted`).
+- Commenting can auto‑tag the post author (`--mention-author`) or tag specific people using inline tokens like `@{Ada Lovelace}`. Mention placement respects `--author-mention-position prepend|append`.
+- Image uploads work headfully or headless without opening the OS picker (sends file paths to the hidden input).
+
+Hardening (duplicates + comment order)
+- Stream comment order: in `--engage-stream both`, the bot now comments first, then likes. In `--engage-stream comment`, it adds a courtesy Like after commenting (not counted as an action).
+- De‑duplication: the stream avoids re‑commenting the same post using multiple guards: URN detection, `div[data-id]` anchor, a text‑hash of actor + content, a DOM marker per post root, and a persisted cache of commented URNs (7‑day TTL) saved to `logs/engage_state.json`.
+- Existing comment detection: before commenting, the stream checks for an existing “You” comment and for a similar snippet of the intended comment text under that post.
+- Editor scoping: the bot locates the comment editor strictly within the current post and blurs it after posting to prevent accidental cross‑post typing.
+
+Bug under investigation
+- In some feeds, the bot may comment more than once on the same post and/or resolve a wrong person in the mention.
+
+What we’ve done to mitigate
+- Iterate posts by stable roots (`div.fie-impression-container`) instead of scanning global bars, and process at most one action bar per root.
+- De‑dup per session using a post key: URN when available, else a SHA‑1 of author + text snippet; track `processed`, `commented`, and `liked` sets.
+- Mark a post as processed as soon as we begin handling it to avoid re‑entry in the same pass.
+- Scroll post roots and buttons into view before interacting; lengthened waits to reduce flaky misses.
+- Mentions: wait longer (up to ~8s) for the editor suggestions tray; apply a small space/backspace nudge to reliably trigger suggestions; prefer the top suggestion (with textual fallback); verify the mention entity.
+- Engage stream: strict in‑root comment editor discovery (no global fallback), comment‑then‑like ordering, and blur the editor after posting to avoid cross‑post reuse.
+- Persistent cache: track commented URNs across runs (7‑day TTL) in `logs/engage_state.json` to avoid re‑commenting.
+
+Troubleshooting duplicates (engage stream)
+- Run with `--debug` and check `logs/linkedin_bot_<timestamp>.log` for these lines:
+  - `ENGAGE_HARDENED v2025.09-1 active` confirms the hardened path is running.
+  - `ENGAGE_KEYS urn=… data_id=… key=… text_key=…` shows identifiers used per post.
+  - `ENGAGE_SKIP reason=…` explains why a post was skipped (processed_key, processed_data_id, dom_mark_commented, promoted, existing user comment, similar comment).
+  - `COMMENT_ORDER mention=prepend|append` shows mention placement used in comments.
+- Removed the “Enter to submit” fallback in stream comments to avoid accidental duplicates.
+
+How to help reproduce locally
+- Run headful with debug and a small cap:
+  - `HEADLESS=false python main.py --debug --engage-stream both --stream-comment "Quick test—thanks!" --mention-author --max-actions 3`
+- Share the log and (if possible) a DOM snippet of the post header/author area. The recorder can also capture selectors when UIs shift.
+
+What’s next (once stable)
+- Repost support (one‑shot + stream): click the “Repost” button, optionally attach a note, and share.
+- Comment rotator: `--stream-comment-file` (one line per variant) to avoid repeating identical text.
+- Persistent de‑dup cache across runs (avoid re‑commenting previous posts), with expiry.
+- Targeting controls: filter by author or text, reaction type selection, and configurable rate limiting windows.
+
 ## Contributing
 
 Contributions are welcome! Please open an issue or PR.

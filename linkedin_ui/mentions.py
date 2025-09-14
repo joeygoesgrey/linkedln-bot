@@ -112,25 +112,37 @@ class MentionsMixin:
                 for ch in name:
                     post_area.send_keys(ch)
                     self.random_delay(config.MIN_TYPING_DELAY, config.MAX_TYPING_DELAY)
+                # Nudge the editor to reliably trigger LinkedIn's typeahead:
+                # add a space, then backspace to return caret to the name end
+                try:
+                    logging.info("MENTIONS_NUDGE space+backspace applied")
+                    post_area.send_keys(" ")
+                    self.random_delay(0.1, 0.25)
+                    post_area.send_keys(Keys.BACKSPACE)
+                except Exception:
+                    pass
                 try:
                     if config.CAPTURE_TYPEAHEAD_HTML:
                         self._capture_typeahead_snapshot(name)
                 except Exception:
                     pass
                 # Give the suggestions tray more time to populate
-                self.random_delay(1.2, 2.4)
+                self.random_delay(1.5, 2.5)
                 self._wait_for_mention_suggestions(name, timeout=8)
 
-                # Single selection attempt to avoid duplicate mentions
-                # Prefer an exact/best textual match if available
+                # Selection strategy: prefer the first visible suggestion after a short wait
+                # (per requested behavior). Fallback to best textual match if needed.
                 selected = self._select_first_mention_suggestion(
-                    post_area, expected_name=name, prefer_first=False
+                    post_area, expected_name=None, prefer_first=True
                 )
-                # If selection didn't occur, try top result once
                 if not selected:
                     selected = self._select_first_mention_suggestion(
-                        post_area, expected_name=None, prefer_first=True
+                        post_area, expected_name=name, prefer_first=False
                     )
+                try:
+                    logging.info(f"MENTIONS_SELECT prefer_first={'yes'} selected={bool(selected)}")
+                except Exception:
+                    pass
 
                 # Verify mention entity; do not try again to avoid duplicates
                 verified = self._verify_mention_entity(post_area, name, timeout=4)

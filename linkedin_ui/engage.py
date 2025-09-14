@@ -18,12 +18,15 @@ How:
 import time
 import logging
 import random
-from typing import Optional, Set
+from typing import Optional, Set, Dict
 import hashlib
 import re
 import re
+import json
+from pathlib import Path
 
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -56,6 +59,10 @@ class EngageStreamMixin:
             bool: True if ran without fatal error.
         """
         mode = (mode or '').strip().lower()
+        try:
+            logging.info("ENGAGE_HARDENED v2025.09-1 active | order=comment-then-like | ttl=7d")
+        except Exception:
+            pass
         if mode not in ('like', 'comment', 'both'):
             logging.error("engage_stream mode must be one of: like | comment | both")
             return False
@@ -81,9 +88,29 @@ class EngageStreamMixin:
         except Exception:
             pass
 
-        processed: Set[str] = set()  # Post keys processed this run (urn or text-hash)
-        commented: Set[str] = set()  # Posts we have commented in this run
-        liked: Set[str] = set()      # Posts we have liked in this run
+        processed: Set[str] = set()            # Post keys processed this run (URN or hash)
+        processed_text_keys: Set[str] = set()  # Stable text-based keys to guard against re-renders
+        processed_ids: Set[str] = set()        # LinkedIn 'data-id' rooted keys (repo.py style)
+        commented: Set[str] = set()            # Posts we have commented in this run (by key)
+        commented_urns: Set[str] = set()       # URNs we have commented (most stable)
+        liked: Set[str] = set()                # Posts we have liked in this run
+
+        # Load persistent state and seed commented URNs (with TTL pruning)
+        state = self._load_engage_state()
+        try:
+            ttl_days = 7
+            now = time.time()
+            kept: Dict[str, float] = {}
+            for urn, ts in (state.get('commented_urns_ts') or {}).items():
+                try:
+                    if now - float(ts) < ttl_days * 86400:
+                        kept[urn] = float(ts)
+                except Exception:
+                    continue
+            state['commented_urns_ts'] = kept
+            commented_urns.update(kept.keys())
+        except Exception:
+            pass
         actions_done = 0
         page_scrolls = 0
 
@@ -110,47 +137,66 @@ class EngageStreamMixin:
                     except Exception:
                         pass
 
+                    # Compute identifiers early
                     urn = self._extract_post_urn(post_root)
+                    data_id = self._extract_data_id(post_root)
+                    text_key = self._post_text_key(post_root)
                     key = self._post_dedupe_key(post_root, urn)
+                    try:
+                        logging.info(f"ENGAGE_KEYS urn={urn or 'none'} data_id={data_id or 'none'} key={key[:8]} text_key={text_key[:8] if text_key else 'none'}")
+                    except Exception:
+                        pass
+
+                    # Skip if we already processed this by any stable key
                     if key in processed:
+                        logging.info("ENGAGE_SKIP reason=processed_key")
                         continue
+                    if text_key and text_key in processed_text_keys:
+                        logging.info("ENGAGE_SKIP reason=processed_text_key")
+                        continue
+                    if data_id and data_id in processed_ids:
+                        logging.info("ENGAGE_SKIP reason=processed_data_id")
+                        continue
+
+                    # Skip if this root was already marked as commented in the DOM
+                    try:
+                        marker = self.driver.execute_script(
+                            "return arguments[0].getAttribute('data-li-bot-commented');", post_root
+                        )
+                        if str(marker).strip() == '1':
+                            processed.add(key)
+                            if text_key:
+                                processed_text_keys.add(text_key)
+                            if data_id:
+                                processed_ids.add(data_id)
+                            logging.info("ENGAGE_SKIP reason=dom_mark_commented")
+                            continue
+                    except Exception:
+                        pass
                     if (not include_promoted) and self._is_promoted_post(post_root):
                         logging.debug(f"Skipping promoted post (urn={urn or 'unknown'})")
                         processed.add(key)
+                        logging.info("ENGAGE_SKIP reason=promoted")
                         continue
 
                     # Mark this post as processed up front to avoid re-entry if the loop reruns
                     processed.add(key)
+                    if text_key:
+                        processed_text_keys.add(text_key)
+                    if data_id:
+                        processed_ids.add(data_id)
 
-                    # Locate the action bar within this post
+                    # Locate the action bar strictly within this post root
                     bar = None
                     try:
                         bar = post_root.find_element(By.XPATH, ".//div[contains(@class,'feed-shared-social-action-bar')]")
                     except Exception:
-                        # Fallback: search globally and ensure ancestry
-                        try:
-                            candidate = self.driver.find_element(By.XPATH, "(//div[contains(@class,'feed-shared-social-action-bar')])[1]")
-                            # Verify it's under this root
-                            try:
-                                candidate.find_element(By.XPATH, ".//ancestor::div[@id=concat('', arguments[0])]")
-                                bar = candidate
-                            except Exception:
-                                bar = None
-                        except Exception:
-                            bar = None
+                        bar = None
                     if not bar:
                         processed.add(key)
                         continue
 
-                    # Like
-                    if mode in ("like", "both") and actions_done < max_actions:
-                        if key not in liked and self._like_from_bar(bar):
-                            actions_done += 1
-                            logging.info(f"Liked post urn={urn or 'unknown'} (actions={actions_done}/{max_actions})")
-                            liked.add(key)
-                            human_pause(dmin, dmax)
-
-                    # Comment
+                    # Comment FIRST (then like) to satisfy requested order
                     if mode in ("comment", "both") and actions_done < max_actions:
                         # Extract author once from this post root and pass down
                         author_name = None
@@ -159,10 +205,34 @@ class EngageStreamMixin:
                                 author_name = self._extract_author_name(post_root)
                             except Exception:
                                 author_name = None
-                        # Gate: skip commenting if the post is already liked
+                        # Gate: skip commenting if already liked ONLY when mode=='comment'
+                        # In 'both' mode we always attempt to comment first.
+                        if mode == 'comment':
+                            try:
+                                if self._is_liked(bar):
+                                    logging.info("Skipping comment: post already liked (gate, comment-only mode)")
+                                    continue
+                            except Exception:
+                                pass
+                        # Gate: skip if we have already commented this URN previously in this run
+                        if urn and urn in commented_urns:
+                            logging.info("Skipping comment: URN already commented this run")
+                            continue
+                        # Gate: best-effort skip if existing user comment detected in this post root
                         try:
-                            if self._is_liked(bar):
-                                logging.info("Skipping comment: post already liked (gate)")
+                            if self._post_has_user_comment(post_root):
+                                logging.info("Skipping comment: detected existing user comment in root")
+                                if urn:
+                                    commented_urns.add(urn)
+                                continue
+                        except Exception:
+                            pass
+                        # Gate: skip if a similar comment text already exists in this root
+                        try:
+                            if self._post_has_similar_comment(post_root, comment_text):
+                                logging.info("Skipping comment: similar comment text already present in root")
+                                if urn:
+                                    commented_urns.add(urn)
                                 continue
                         except Exception:
                             pass
@@ -176,19 +246,61 @@ class EngageStreamMixin:
                             actions_done += 1
                             logging.info(f"Commented post urn={urn or 'unknown'} (actions={actions_done}/{max_actions})")
                             commented.add(key)
+                            if urn:
+                                commented_urns.add(urn)
+                                # Persist commented URN with timestamp
+                                try:
+                                    state.setdefault('commented_urns_ts', {})[urn] = time.time()
+                                    self._save_engage_state(state)
+                                except Exception:
+                                    pass
+                            if data_id:
+                                processed_ids.add(data_id)
                             human_pause(dmin, dmax)
 
-                            # Always like a post we commented on, even if mode was 'comment'.
-                            # This courtesy like does not increment actions_done.
+                            # After commenting: like behavior depends on mode
+                            # - 'both': like and COUNT it if not already liked
+                            # - 'comment': courtesy-like WITHOUT counting
                             try:
                                 if key not in liked and self._like_from_bar(bar):
                                     liked.add(key)
-                                    logging.info("Ensured like after comment")
+                                    if mode == 'both':
+                                        actions_done += 1
+                                        logging.info(f"Liked post after comment urn={urn or 'unknown'} (actions={actions_done}/{max_actions})")
+                                    else:
+                                        logging.info("Ensured courtesy like after comment (not counted)")
+                                    # Mark DOM as liked for this root
+                                    try:
+                                        root_to_mark = post_root or self._find_post_root_for_bar(bar)
+                                        self.driver.execute_script("arguments[0].setAttribute('data-li-bot-liked','1');", root_to_mark)
+                                    except Exception:
+                                        pass
                                     human_pause(dmin, dmax)
                             except Exception:
                                 pass
 
                     # Done with this post; move on
+
+                    # If mode == 'like' only (no comment), perform like now
+                    if mode == 'like' and actions_done < max_actions:
+                        # Skip like if already marked as liked in DOM (session)
+                        try:
+                            marker_like = self.driver.execute_script(
+                                "return arguments[0].getAttribute('data-li-bot-liked');", post_root
+                            )
+                            if str(marker_like).strip() == '1':
+                                continue
+                        except Exception:
+                            pass
+                        if key not in liked and self._like_from_bar(bar):
+                            actions_done += 1
+                            logging.info(f"Liked post urn={urn or 'unknown'} (actions={actions_done}/{max_actions})")
+                            liked.add(key)
+                            try:
+                                self.driver.execute_script("arguments[0].setAttribute('data-li-bot-liked','1');", post_root)
+                            except Exception:
+                                pass
+                            human_pause(dmin, dmax)
 
                 # After processing current viewport, scroll to load more
                 if actions_done < max_actions:
@@ -281,9 +393,153 @@ class EngageStreamMixin:
                             return v
                     except Exception:
                         continue
+
+            # Link-based fallback: parse URN from update links
+            try:
+                anchors = root.find_elements(By.XPATH, ".//a[contains(@href,'/feed/update/') or contains(@href,'activity:')]")
+                for a in anchors:
+                    try:
+                        href = a.get_attribute('href') or ''
+                        m = re.search(r"urn:li:activity:\d+", href)
+                        if m:
+                            return m.group(0)
+                    except Exception:
+                        continue
+            except Exception:
+                pass
         except Exception:
             pass
         return None
+
+    def _extract_data_id(self, root) -> str:
+        """Extract the LinkedIn post container data-id (repo.py style), if present."""
+        try:
+            try:
+                v = root.get_attribute('data-id')
+                if v:
+                    return v
+            except Exception:
+                pass
+            try:
+                anc = root.find_element(By.XPATH, "ancestor-or-self::*[@data-id][1]")
+                v = anc.get_attribute('data-id')
+                if v:
+                    return v
+            except Exception:
+                pass
+        except Exception:
+            pass
+        return ""
+
+    def _post_text_key(self, root) -> str:
+        """Stable text-based key: normalized actor + first content snippet (no DOM id)."""
+        try:
+            actor = ""
+            try:
+                actor = self._extract_author_name(root) or ""
+            except Exception:
+                pass
+            text = ""
+            try:
+                snippet_nodes = root.find_elements(By.XPATH,
+                    ".//div[contains(@class,'update-components-text') or contains(@class,'feed-shared-inline-show-more-text')]//*[normalize-space()]"
+                )
+                for n in snippet_nodes:
+                    t = (n.text or "").strip()
+                    if t:
+                        text = t
+                        break
+            except Exception:
+                pass
+            src = (actor + "|" + text[:160]).strip()
+            return hashlib.sha1(src.encode('utf-8', errors='ignore')).hexdigest() if src else ""
+        except Exception:
+            return ""
+
+    def _post_has_user_comment(self, root) -> bool:
+        """Best-effort detection of an existing comment by the current user.
+
+        Notes:
+            We don't have the display name; heuristic checks for visible items
+            containing 'You' within comment items.
+        """
+        try:
+            paths = [
+                ".//*[contains(@class,'comments-comment-item')]//*[contains(normalize-space(.),'You')]",
+                ".//*[contains(@class,'comments-comment-item')]//*[contains(normalize-space(.),'you')]",
+            ]
+            for xp in paths:
+                try:
+                    nodes = root.find_elements(By.XPATH, xp)
+                    for n in nodes:
+                        try:
+                            if n.is_displayed():
+                                return True
+                        except Exception:
+                            continue
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return False
+
+    def _post_has_similar_comment(self, root, text: Optional[str]) -> bool:
+        """Check if a similar comment (by this run's text) already exists under the post root.
+
+        Uses a lightweight substring heuristic: takes the first 32 visible characters
+        (letters/digits/spaces) of the intended comment and searches within visible comment items.
+        """
+        try:
+            if not text:
+                return False
+            # Normalize and take a short signature to minimize false positives
+            sig = re.sub(r"\s+", " ", str(text)).strip()
+            sig = re.sub(r"[^\w\s.,!?@#:+-]", "", sig)  # keep basic punctuation
+            if len(sig) < 8:
+                return False
+            sig = sig[:32].lower()
+            paths = [
+                ".//*[contains(@class,'comments-comment-item')]//*[normalize-space()]",
+            ]
+            for xp in paths:
+                try:
+                    nodes = root.find_elements(By.XPATH, xp)
+                    for n in nodes:
+                        try:
+                            if not n.is_displayed():
+                                continue
+                            txt = (n.text or "").strip().lower()
+                            if sig and sig in txt:
+                                return True
+                        except Exception:
+                            continue
+                except Exception:
+                    continue
+        except Exception:
+            pass
+        return False
+
+    def _load_engage_state(self) -> Dict:
+        try:
+            p = Path(config.LOG_DIRECTORY)
+            p.mkdir(exist_ok=True)
+            fpath = p / 'engage_state.json'
+            if fpath.exists():
+                with open(fpath, 'r', encoding='utf-8') as f:
+                    return json.load(f) or {}
+        except Exception:
+            pass
+        return {}
+
+    def _save_engage_state(self, state: Dict) -> None:
+        try:
+            p = Path(config.LOG_DIRECTORY)
+            p.mkdir(exist_ok=True)
+            fpath = p / 'engage_state.json'
+            with open(fpath, 'w', encoding='utf-8') as f:
+                json.dump(state, f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
 
     def _post_dedupe_key(self, root, urn: Optional[str]) -> str:
         """Return a stable key for a post: URN if available, else hash of text snippet."""
@@ -383,36 +639,71 @@ class EngageStreamMixin:
             if not opened:
                 return False
 
-            # Find the editable comment box near this bar
+            # Find the editable comment box strictly within this post root
             editor = None
+            root = None
+            try:
+                root = self._find_post_root_for_bar(bar)
+            except Exception:
+                root = None
+            search_context = root if root is not None else bar
             candidates = [
-                ".//ancestor::div[contains(@class,'update-v2-social-activity')][1]//div[@contenteditable='true']",
-                "(//div[@contenteditable='true' and contains(@class,'comments')])[1]",
-                "(//div[@contenteditable='true' and contains(@role,'textbox')])[1]",
+                ".//div[@contenteditable='true' and contains(@class,'comments')]",
+                ".//div[@contenteditable='true' and contains(@role,'textbox')]",
+                ".//form[contains(@class,'comments')]//div[@contenteditable='true']",
             ]
             for xp in candidates:
                 try:
-                    editor = WebDriverWait(bar, 4).until(EC.presence_of_element_located((By.XPATH, xp)))
+                    editor = WebDriverWait(search_context, 4).until(
+                        EC.presence_of_element_located((By.XPATH, xp))
+                    )
                     if editor and editor.is_displayed():
                         break
                 except Exception:
                     continue
             if not editor:
-                # Try global as fallback
-                try:
-                    editor = WebDriverWait(self.driver, 3).until(
-                        EC.presence_of_element_located((By.XPATH, "//div[@contenteditable='true']"))
-                    )
-                except Exception:
-                    return False
+                return False
 
             try:
                 self._click_element_with_fallback(editor, "comment editor (stream)")
             except Exception:
                 pass
 
-            # Stage A: compose base text (without author token)
+            # Compose text + author mention with order preference
             base_text = text or ""
+            author = None
+            if mention_author:
+                author = author_name
+                if author is None:
+                    try:
+                        if root is None:
+                            root = self._find_post_root_for_bar(bar)
+                    except Exception:
+                        root = None
+                    try:
+                        author = self._extract_author_name(root) if root is not None else None
+                    except Exception:
+                        author = None
+
+            # If prepend, insert mention first
+            if mention_author and author and (mention_position or 'append') == 'prepend':
+                try:
+                    logging.info("COMMENT_ORDER mention=prepend")
+                except Exception:
+                    pass
+                try:
+                    self._insert_mentions(editor, [author], leading_space=False)
+                    try:
+                        editor.send_keys(" ")
+                    except Exception:
+                        pass
+                except Exception:
+                    try:
+                        editor.send_keys(f"@{author} ")
+                    except Exception:
+                        pass
+
+            # Compose base text (supports inline tokens)
             if hasattr(self, "_post_text_contains_inline_mentions") and \
                self._post_text_contains_inline_mentions(base_text):
                 if not self._compose_text_with_mentions(editor, base_text):
@@ -427,33 +718,28 @@ class EngageStreamMixin:
                     except Exception:
                         return False
 
-            # Stage B: insert author mention as a separate step
-            if mention_author:
-                author = author_name
-                if author is None:
+            # If append, insert mention after typing base text
+            if mention_author and author and (mention_position or 'append') == 'append':
+                try:
+                    logging.info("COMMENT_ORDER mention=append")
+                except Exception:
+                    pass
+                try:
+                    # Ensure caret at end, then insert mention with leading space
                     try:
-                        root = self._find_post_root_for_bar(bar)
-                        author = self._extract_author_name(root) if root is not None else None
+                        self._move_caret_to_end(editor)
                     except Exception:
-                        author = None
-                if author:
+                        pass
+                    self._insert_mentions(editor, [author], leading_space=True)
                     try:
-                        # Ensure caret at end, then insert mention with leading space
-                        try:
-                            self._move_caret_to_end(editor)
-                        except Exception:
-                            pass
-                        self._insert_mentions(editor, [author], leading_space=True)
-                        # Add trailing space so following words don't stick to the mention
-                        try:
-                            editor.send_keys(" ")
-                        except Exception:
-                            pass
+                        editor.send_keys(" ")
                     except Exception:
-                        try:
-                            editor.send_keys(f" @{author} ")
-                        except Exception:
-                            pass
+                        pass
+                except Exception:
+                    try:
+                        editor.send_keys(f" @{author} ")
+                    except Exception:
+                        pass
 
             # Submit comment (no Enter fallback to avoid duplicates)
             for sel in [
@@ -470,6 +756,29 @@ class EngageStreamMixin:
                     except Exception:
                         pass
                     if self._click_element_with_fallback(post_btn, "Submit comment (stream)"):
+                        # Mark this post root as commented to avoid re-entry within this session
+                        try:
+                            root = self._find_post_root_for_bar(bar)
+                            if root is None:
+                                root = bar
+                            self.driver.execute_script(
+                                "arguments[0].setAttribute('data-li-bot-commented','1');", root
+                            )
+                        except Exception:
+                            pass
+                        # Try to blur/close the editor to avoid cross-post typing
+                        try:
+                            editor = root.find_element(By.XPATH, ".//div[@contenteditable='true']")
+                            try:
+                                editor.send_keys(Keys.ESCAPE)
+                            except Exception:
+                                pass
+                            try:
+                                self.driver.execute_script("arguments[0].blur && arguments[0].blur();", editor)
+                            except Exception:
+                                pass
+                        except Exception:
+                            pass
                         return True
                 except Exception:
                     continue
