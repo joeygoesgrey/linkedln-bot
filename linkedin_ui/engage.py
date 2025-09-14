@@ -881,7 +881,13 @@ class EngageStreamMixin:
                         self._move_caret_to_end(editor)
                     except Exception:
                         pass
-                    self._insert_mentions(editor, [author], leading_space=True)
+                    # Add one space to guarantee we are truly after the typed text
+                    try:
+                        editor.send_keys(" ")
+                    except Exception:
+                        pass
+                    # Insert mention explicitly at the end
+                    self._insert_mentions(editor, [author], leading_space=True, force_end=True)
                     try:
                         editor.send_keys(" ")
                     except Exception:
@@ -889,6 +895,21 @@ class EngageStreamMixin:
                 except Exception:
                     try:
                         editor.send_keys(f" @{author} ")
+                    except Exception:
+                        pass
+                # Verify a real mention entity exists; else append raw token at the very end
+                try:
+                    verified = self._verify_mention_entity(editor, author, timeout=2)
+                except Exception:
+                    verified = False
+                if not verified:
+                    try:
+                        self._move_caret_to_end(editor)
+                    except Exception:
+                        pass
+                    try:
+                        editor.send_keys(f" @{author} ")
+                        logging.info("MENTION_FALLBACK appended raw token at end (no entity)")
                     except Exception:
                         pass
 
