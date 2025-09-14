@@ -45,6 +45,8 @@ class EngageStreamMixin:
         mention_author: bool = False,
         mention_position: str = 'append',
         infinite: bool = False,
+        scroll_wait_min: Optional[float] = None,
+        scroll_wait_max: Optional[float] = None,
     ) -> bool:
         """
         Engage the feed by liking/commenting posts until limits are reached.
@@ -79,6 +81,8 @@ class EngageStreamMixin:
         # Use provided delay window if set; else fall back to config
         dmin = delay_min if delay_min is not None else config.MIN_ACTION_DELAY
         dmax = delay_max if delay_max is not None else config.MAX_ACTION_DELAY
+        swmin = scroll_wait_min if scroll_wait_min is not None else 1.5
+        swmax = scroll_wait_max if scroll_wait_max is not None else 3.0
 
         def human_pause(a=1.0, b=2.0):
             time.sleep(random.uniform(max(0.05, a), max(0.1, b)))
@@ -132,11 +136,11 @@ class EngageStreamMixin:
                     except Exception:
                         pass
                     prev_keys_snapshot = self._visible_post_keys(limit=12)
-                    self._scroll_feed()
+                    self._scroll_feed(swmin, swmax)
                     # Aggressive fallback if nothing new
                     now_keys_snapshot = self._visible_post_keys(limit=12)
                     if set(now_keys_snapshot) == set(prev_keys_snapshot):
-                        self._aggressive_load_more(prev_keys_snapshot, tries=3)
+                        self._aggressive_load_more(prev_keys_snapshot, tries=3, wait_min=swmin, wait_max=swmax)
                     page_scrolls += 1
                     if (not infinite) and page_scrolls > 20:
                         logging.info("No more posts found after many scrolls; stopping")
@@ -330,10 +334,10 @@ class EngageStreamMixin:
                         except Exception:
                             pass
                         prev_keys_snapshot = self._visible_post_keys(limit=16)
-                        self._scroll_feed()
+                        self._scroll_feed(swmin, swmax)
                         now_keys_snapshot = self._visible_post_keys(limit=16)
                         if set(now_keys_snapshot) == set(prev_keys_snapshot):
-                            self._aggressive_load_more(prev_keys_snapshot, tries=3)
+                            self._aggressive_load_more(prev_keys_snapshot, tries=3, wait_min=swmin, wait_max=swmax)
 
             logging.info(f"Engage stream finished (actions={actions_done})")
             return True
@@ -390,8 +394,15 @@ class EngageStreamMixin:
                 continue
         return keys
 
-    def _scroll_feed(self):
-        """Scrolls the feed down by ~0.9 viewport height and logs doc height changes."""
+    def _scroll_feed(self, wait_min: float = 1.5, wait_max: float = 3.0):
+        """Scrolls the feed and logs doc height changes with fallbacks and extended waits.
+
+        Strategy:
+        - Try page-down (~0.9 viewport height)
+        - Wait (configurable)
+        - If no growth, send End key as a fallback, then wait longer
+        - If still no growth, JS scrollTo bottom
+        """
         try:
             prev_h = self.driver.execute_script("return document.body.scrollHeight || document.documentElement.scrollHeight || 0;")
         except Exception:
@@ -405,11 +416,34 @@ class EngageStreamMixin:
                 logging.info("SCROLL action=scroll_to_bottom (fallback)")
             except Exception:
                 pass
-        time.sleep(random.uniform(1.2, 2.2))
+        time.sleep(random.uniform(max(0.2, wait_min), max(wait_min + 0.1, wait_max)))
         try:
             new_h = self.driver.execute_script("return document.body.scrollHeight || document.documentElement.scrollHeight || 0;")
             if prev_h is not None and new_h is not None:
-                logging.info(f"SCROLL height_before={prev_h} height_after={new_h} delta={int(new_h)-int(prev_h)}")
+                delta = int(new_h) - int(prev_h)
+                logging.info(f"SCROLL height_before={prev_h} height_after={new_h} delta={delta}")
+                if delta <= 0:
+                    # Fallback: send End key and wait extended window
+                    try:
+                        from selenium.webdriver.common.keys import Keys
+                        self.driver.switch_to.active_element.send_keys(Keys.END)
+                        logging.info("SCROLL_FALLBACK end_key_sent")
+                    except Exception:
+                        try:
+                            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                            logging.info("SCROLL_FALLBACK js_scroll_to_bottom")
+                        except Exception:
+                            pass
+                    # Extended wait
+                    ext_wait = max(wait_max, wait_min) + random.uniform(0.8, 1.6)
+                    logging.info(f"SCROLL_STALL extended_wait={ext_wait:.2f}s")
+                    time.sleep(ext_wait)
+                    # Recompute height
+                    try:
+                        newer_h = self.driver.execute_script("return document.body.scrollHeight || document.documentElement.scrollHeight || 0;")
+                        logging.info(f"SCROLL_STALL height_after_extended={newer_h} delta2={int(newer_h)-int(new_h)}")
+                    except Exception:
+                        pass
         except Exception:
             pass
 
@@ -423,10 +457,19 @@ class EngageStreamMixin:
                 logging.info(f"SCROLL_AGG attempt={i+1}/{tries} strategy=bottom")
             except Exception:
                 pass
+            did_bottom = False
             try:
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                did_bottom = True
             except Exception:
                 pass
+            if not did_bottom:
+                try:
+                    from selenium.webdriver.common.keys import Keys
+                    self.driver.switch_to.active_element.send_keys(Keys.END)
+                    logging.info("SCROLL_AGG end_key_sent")
+                except Exception:
+                    pass
             time.sleep(random.uniform(wait_min, wait_max))
             # Nudge a bit upward then down again to trigger lazy loaders
             try:

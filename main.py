@@ -155,6 +155,19 @@ def setup_argument_parser():
         default=None,
         help="Maximum human-like delay between actions (seconds)."
     )
+    # Scrolling tuneables for engage stream
+    parser.add_argument(
+        "--scroll-wait-min",
+        type=float,
+        default=None,
+        help="Minimum wait after a scroll to allow the feed to load (seconds)."
+    )
+    parser.add_argument(
+        "--scroll-wait-max",
+        type=float,
+        default=None,
+        help="Maximum wait after a scroll to allow the feed to load (seconds)."
+    )
     
     return parser
 
@@ -258,6 +271,8 @@ def main():
                 mention_author=args.mention_author,
                 mention_position=args.author_mention_position,
                 infinite=args.infinite,
+                scroll_wait_min=args.scroll_wait_min,
+                scroll_wait_max=args.scroll_wait_max,
             )
             bot.close()
             return 0 if ok else 1
