@@ -124,10 +124,19 @@ class EngageStreamMixin:
             while True:
                 if (not infinite) and actions_done >= max_actions:
                     break
-                posts = self._find_visible_posts(limit=8)
+                posts = self._find_visible_posts(limit=12)
                 if not posts:
                     # Scroll to load more
+                    try:
+                        logging.info("SCROLL_LOOP no_posts_found -> scroll_feed")
+                    except Exception:
+                        pass
+                    prev_keys_snapshot = self._visible_post_keys(limit=12)
                     self._scroll_feed()
+                    # Aggressive fallback if nothing new
+                    now_keys_snapshot = self._visible_post_keys(limit=12)
+                    if set(now_keys_snapshot) == set(prev_keys_snapshot):
+                        self._aggressive_load_more(prev_keys_snapshot, tries=3)
                     page_scrolls += 1
                     if (not infinite) and page_scrolls > 20:
                         logging.info("No more posts found after many scrolls; stopping")
@@ -135,6 +144,7 @@ class EngageStreamMixin:
                     continue
 
                 # Process each visible post exactly once
+                made_progress = False
                 for post_root in posts:
                     if (not infinite) and actions_done >= max_actions:
                         break
@@ -252,6 +262,7 @@ class EngageStreamMixin:
                             author_name=author_name,
                         ):
                             actions_done += 1
+                            made_progress = True
                             logging.info(f"Commented post urn={urn or 'unknown'} (actions={actions_done}/{max_actions})")
                             commented.add(key)
                             if urn:
@@ -302,6 +313,7 @@ class EngageStreamMixin:
                             pass
                         if key not in liked and self._like_from_bar(bar):
                             actions_done += 1
+                            made_progress = True
                             logging.info(f"Liked post urn={urn or 'unknown'} (actions={actions_done}/{max_actions})")
                             liked.add(key)
                             try:
@@ -310,9 +322,18 @@ class EngageStreamMixin:
                                 pass
                             human_pause(dmin, dmax)
 
-                # After processing current viewport, scroll to load more
+                # After processing current viewport, scroll to load more (only if no progress)
                 if infinite or (actions_done < max_actions):
-                    self._scroll_feed()
+                    if not made_progress:
+                        try:
+                            logging.info("SCROLL_LOOP no_progress_in_viewport -> scroll_feed")
+                        except Exception:
+                            pass
+                        prev_keys_snapshot = self._visible_post_keys(limit=16)
+                        self._scroll_feed()
+                        now_keys_snapshot = self._visible_post_keys(limit=16)
+                        if set(now_keys_snapshot) == set(prev_keys_snapshot):
+                            self._aggressive_load_more(prev_keys_snapshot, tries=3)
 
             logging.info(f"Engage stream finished (actions={actions_done})")
             return True
@@ -351,6 +372,85 @@ class EngageStreamMixin:
             except Exception:
                 continue
         return posts
+
+    def _visible_post_keys(self, limit=16):
+        """Collect a snapshot of visible post keys for progress detection and logging."""
+        keys = []
+        posts = self._find_visible_posts(limit=limit)
+        try:
+            logging.info(f"SCROLL visible_posts={len(posts)}")
+        except Exception:
+            pass
+        for root in posts:
+            try:
+                urn = self._extract_post_urn(root)
+                key = self._post_dedupe_key(root, urn)
+                keys.append(key)
+            except Exception:
+                continue
+        return keys
+
+    def _scroll_feed(self):
+        """Scrolls the feed down by ~0.9 viewport height and logs doc height changes."""
+        try:
+            prev_h = self.driver.execute_script("return document.body.scrollHeight || document.documentElement.scrollHeight || 0;")
+        except Exception:
+            prev_h = None
+        try:
+            self.driver.execute_script("window.scrollBy(0, Math.round(window.innerHeight*0.9));")
+            logging.info("SCROLL action=page_down amount=0.9vh")
+        except Exception:
+            try:
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                logging.info("SCROLL action=scroll_to_bottom (fallback)")
+            except Exception:
+                pass
+        time.sleep(random.uniform(1.2, 2.2))
+        try:
+            new_h = self.driver.execute_script("return document.body.scrollHeight || document.documentElement.scrollHeight || 0;")
+            if prev_h is not None and new_h is not None:
+                logging.info(f"SCROLL height_before={prev_h} height_after={new_h} delta={int(new_h)-int(prev_h)}")
+        except Exception:
+            pass
+
+    def _aggressive_load_more(self, prev_keys: list, tries: int = 4, wait_min: float = 1.5, wait_max: float = 3.0) -> bool:
+        """Attempt multiple scroll strategies until new posts appear.
+
+        Returns True if new post keys appear, else False.
+        """
+        for i in range(max(1, tries)):
+            try:
+                logging.info(f"SCROLL_AGG attempt={i+1}/{tries} strategy=bottom")
+            except Exception:
+                pass
+            try:
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            except Exception:
+                pass
+            time.sleep(random.uniform(wait_min, wait_max))
+            # Nudge a bit upward then down again to trigger lazy loaders
+            try:
+                self.driver.execute_script("window.scrollBy(0, -Math.round(window.innerHeight*0.2));")
+                time.sleep(random.uniform(0.6, 1.2))
+                self.driver.execute_script("window.scrollBy(0, Math.round(window.innerHeight*0.8));")
+            except Exception:
+                pass
+            try:
+                self.dismiss_overlays()
+            except Exception:
+                pass
+            now_keys = self._visible_post_keys(limit=20)
+            if any(k not in prev_keys for k in now_keys):
+                try:
+                    logging.info(f"SCROLL_AGG new_posts_detected count={len([k for k in now_keys if k not in prev_keys])}")
+                except Exception:
+                    pass
+                return True
+        try:
+            logging.info("SCROLL_AGG no_new_posts_after_tries")
+        except Exception:
+            pass
+        return False
 
     def _find_post_root_for_bar(self, bar):
         # Try typical post containers as ancestors of the social action bar
