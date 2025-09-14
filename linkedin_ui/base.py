@@ -19,6 +19,7 @@ import logging
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 
 import config
 
@@ -100,3 +101,44 @@ class BaseInteraction:
                     logging.error(f"All click methods failed for '{element_name}': {ac_e}")
                     return False
 
+    def _move_caret_to_end(self, contenteditable_element):
+        """Move the caret to the end of a contenteditable element reliably.
+
+        Tries JS range selection first; falls back to sending End key.
+        """
+        try:
+            js = """
+                const el = arguments[0];
+                if (!el) return false;
+                try {
+                  const range = document.createRange();
+                  range.selectNodeContents(el);
+                  range.collapse(false);
+                  const sel = window.getSelection();
+                  sel.removeAllRanges();
+                  sel.addRange(range);
+                  return true;
+                } catch (e) {
+                  try { el.focus && el.focus(); } catch(e2){}
+                  return false;
+                }
+            """
+            ok = self.driver.execute_script(js, contenteditable_element)
+            if ok:
+                logging.info("CARET moved_to_end via JS range")
+                return True
+        except Exception:
+            pass
+        # Fallback: try focusing element and sending End key
+        try:
+            try:
+                contenteditable_element.click()
+            except Exception:
+                self._click_element_with_fallback(contenteditable_element, "contenteditable focus (caret)")
+            actions = ActionChains(self.driver)
+            actions.send_keys(Keys.END).perform()
+            logging.info("CARET moved_to_end via Keys.END fallback")
+            return True
+        except Exception as e:
+            logging.debug(f"CARET move_to_end failed: {e}")
+            return False
