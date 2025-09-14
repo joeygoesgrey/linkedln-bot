@@ -86,9 +86,22 @@ class MentionsMixin:
 
         for name in names:
             try:
-                if leading_space:
-                    post_area.send_keys(" ")
-                    self.random_delay(config.MIN_TYPING_DELAY, config.MAX_TYPING_DELAY)
+                # Ensure separation before '@' so tray appears reliably
+                need_space = True
+                try:
+                    last_char = self.driver.execute_script(
+                        "return (arguments[0].innerText||'').slice(-1);",
+                        post_area,
+                    ) or ""
+                    need_space = leading_space or (not last_char or (isinstance(last_char, str) and not last_char.isspace()))
+                except Exception:
+                    need_space = True
+                if need_space:
+                    try:
+                        post_area.send_keys(" ")
+                        self.random_delay(config.MIN_TYPING_DELAY, config.MAX_TYPING_DELAY)
+                    except Exception:
+                        pass
                 post_area.send_keys("@")
                 self.random_delay(0.2, 0.5)
                 try:
@@ -121,6 +134,11 @@ class MentionsMixin:
 
                 # Verify mention entity; do not try again to avoid duplicates
                 verified = self._verify_mention_entity(post_area, name, timeout=4)
+                # Always add a trailing space after the mention so the next word doesn't stick
+                try:
+                    post_area.send_keys(" ")
+                except Exception:
+                    pass
 
                 try:
                     self._cleanup_trailing_newline(post_area)

@@ -21,6 +21,7 @@ import random
 from typing import Optional, Set
 import hashlib
 import re
+import re
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -158,6 +159,13 @@ class EngageStreamMixin:
                                 author_name = self._extract_author_name(post_root)
                             except Exception:
                                 author_name = None
+                        # Gate: skip commenting if the post is already liked
+                        try:
+                            if self._is_liked(bar):
+                                logging.info("Skipping comment: post already liked (gate)")
+                                continue
+                        except Exception:
+                            pass
                         if key not in commented and self._comment_from_bar(
                             bar,
                             comment_text,
@@ -169,6 +177,16 @@ class EngageStreamMixin:
                             logging.info(f"Commented post urn={urn or 'unknown'} (actions={actions_done}/{max_actions})")
                             commented.add(key)
                             human_pause(dmin, dmax)
+
+                            # Always like a post we commented on, even if mode was 'comment'.
+                            # This courtesy like does not increment actions_done.
+                            try:
+                                if key not in liked and self._like_from_bar(bar):
+                                    liked.add(key)
+                                    logging.info("Ensured like after comment")
+                                    human_pause(dmin, dmax)
+                            except Exception:
+                                pass
 
                     # Done with this post; move on
 
@@ -194,6 +212,7 @@ class EngageStreamMixin:
         """
         posts = []
         selectors = [
+            "//div[@data-id]",
             "//div[contains(@class,'fie-impression-container')]",
             "//div[contains(@class,'feed-shared-update-v2__control-menu-container')]/div[contains(@class,'fie-impression-container')]",
             "//div[contains(@class,'feed-shared-update-v2')]",
@@ -231,20 +250,31 @@ class EngageStreamMixin:
         return bar
 
     def _extract_post_urn(self, root):
-        # Best effort: look for data-urn / data-entity-urn on root or ancestors
+        """Best-effort: find a stable URN/id for the post via ancestors or descendants."""
         try:
-            attrs = ["data-urn", "data-entity-urn", "data-id"]
-            for a in attrs:
+            # Ancestor-or-self with data-urn or data-entity-urn
+            try:
+                anc = root.find_element(By.XPATH, "ancestor-or-self::*[@data-urn or @data-entity-urn][1]")
+                for a in ("data-urn", "data-entity-urn"):
+                    val = anc.get_attribute(a)
+                    if val:
+                        return val
+            except Exception:
+                pass
+
+            # Self attributes
+            for a in ("data-urn", "data-entity-urn", "data-id"):
                 try:
                     v = root.get_attribute(a)
                     if v:
                         return v
                 except Exception:
                     continue
-            # Scan descendants for a likely urn as a fallback
+
+            # Descendant search fallback
             cand = root.find_elements(By.XPATH, ".//*[@data-urn or @data-entity-urn or @data-id]")
             for el in cand:
-                for a in attrs:
+                for a in ("data-urn", "data-entity-urn", "data-id"):
                     try:
                         v = el.get_attribute(a)
                         if v:
@@ -259,7 +289,7 @@ class EngageStreamMixin:
         """Return a stable key for a post: URN if available, else hash of text snippet."""
         if urn:
             return urn
-        # Fallback: hash of actor + first 160 chars of text
+        # Fallback: hash of (root id if present) + actor + first 160 chars of text
         actor = ""
         try:
             actor = self._extract_author_name(root) or ""
@@ -277,7 +307,12 @@ class EngageStreamMixin:
                     break
         except Exception:
             pass
-        key_src = (actor + "|" + text[:160]).strip() or str(id(root))
+        root_id = ""
+        try:
+            root_id = root.get_attribute("id") or ""
+        except Exception:
+            pass
+        key_src = (root_id + "|" + actor + "|" + text[:160]).strip() or str(id(root))
         return hashlib.sha1(key_src.encode("utf-8", errors="ignore")).hexdigest()
 
     def _is_promoted_post(self, root) -> bool:
@@ -403,10 +438,20 @@ class EngageStreamMixin:
                         author = None
                 if author:
                     try:
+                        # Ensure caret at end, then insert mention with leading space
+                        try:
+                            self._move_caret_to_end(editor)
+                        except Exception:
+                            pass
                         self._insert_mentions(editor, [author], leading_space=True)
+                        # Add trailing space so following words don't stick to the mention
+                        try:
+                            editor.send_keys(" ")
+                        except Exception:
+                            pass
                     except Exception:
                         try:
-                            editor.send_keys(f" @{author}")
+                            editor.send_keys(f" @{author} ")
                         except Exception:
                             pass
 
