@@ -29,6 +29,11 @@ import config
 
 
 class MentionsMixin:
+    def _sanitize_bmp(self, text: str) -> str:
+        try:
+            return "".join(ch for ch in str(text) if ord(ch) <= 0xFFFF)
+        except Exception:
+            return str(text or "")
     def _post_text_contains_inline_mentions(self, post_text):
         if not post_text:
             return False
@@ -109,7 +114,8 @@ class MentionsMixin:
                         self._capture_typeahead_snapshot(name)
                 except Exception:
                     pass
-                for ch in name:
+                safe_name = self._sanitize_bmp(name)
+                for ch in safe_name:
                     post_area.send_keys(ch)
                     self.random_delay(config.MIN_TYPING_DELAY, config.MAX_TYPING_DELAY)
                 # Nudge the editor to reliably trigger LinkedIn's typeahead:
@@ -137,7 +143,7 @@ class MentionsMixin:
                 )
                 if not selected:
                     selected = self._select_first_mention_suggestion(
-                        post_area, expected_name=name, prefer_first=False
+                        post_area, expected_name=safe_name, prefer_first=False
                     )
                 try:
                     logging.info(f"MENTIONS_SELECT prefer_first={'yes'} selected={bool(selected)}")

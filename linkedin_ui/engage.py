@@ -394,7 +394,7 @@ class EngageStreamMixin:
                 continue
         return keys
 
-    def _scroll_feed(self, wait_min: float = 1.5, wait_max: float = 3.0):
+    def _scroll_feed(self, wait_min: float = 1.5, wait_max: float = 3.0, *args, **kwargs):
         """Scrolls the feed and logs doc height changes with fallbacks and extended waits.
 
         Strategy:
@@ -435,7 +435,7 @@ class EngageStreamMixin:
                         except Exception:
                             pass
                     # Extended wait
-                    ext_wait = max(wait_max, wait_min) + random.uniform(0.8, 1.6)
+                    ext_wait = max(float(wait_max), float(wait_min)) + random.uniform(0.8, 1.6)
                     logging.info(f"SCROLL_STALL extended_wait={ext_wait:.2f}s")
                     time.sleep(ext_wait)
                     # Recompute height
@@ -899,6 +899,12 @@ class EngageStreamMixin:
                 "//button[@data-control-name='submit_comment']",
             ]:
                 try:
+                    try:
+                        # Dismiss any global typeahead overlay that may intercept the click
+                        logging.info("DISMISS before_submit: global search/typeahead overlay")
+                        self._dismiss_global_search_overlay()
+                    except Exception:
+                        pass
                     post_btn = WebDriverWait(self.driver, 4).until(
                         EC.element_to_be_clickable((By.XPATH, sel))
                     )
