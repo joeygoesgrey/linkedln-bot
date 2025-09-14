@@ -185,10 +185,17 @@ python main.py --debug --engage-stream comment \
 python main.py --debug --engage-stream both \
   --stream-comment "Great point!" \
   --mention-author
+
+# Infinite engage (runs until Ctrl+C)
+python main.py --debug --engage-stream comment \
+  --stream-comment "Great point!" \
+  --mention-author \
+  --infinite
 ```
 
 Options:
 - `--max-actions N` (default 12)
+- `--infinite` (ignore max-actions and continue until Ctrl+C)
 - `--include-promoted` (skip by default)
 - `--delay-min/--delay-max` human‑like delays
 
