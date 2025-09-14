@@ -44,6 +44,7 @@ class EngageStreamMixin:
         delay_max: Optional[float] = None,
         mention_author: bool = False,
         mention_position: str = 'append',
+        infinite: bool = False,
     ) -> bool:
         """
         Engage the feed by liking/commenting posts until limits are reached.
@@ -63,6 +64,11 @@ class EngageStreamMixin:
             logging.info("ENGAGE_HARDENED v2025.09-1 active | order=comment-then-like | ttl=7d")
         except Exception:
             pass
+        if infinite:
+            try:
+                logging.info("INF_SCROLL engage: running until Ctrl+C (ignoring --max-actions)")
+            except Exception:
+                pass
         if mode not in ('like', 'comment', 'both'):
             logging.error("engage_stream mode must be one of: like | comment | both")
             return False
@@ -115,20 +121,22 @@ class EngageStreamMixin:
         page_scrolls = 0
 
         try:
-            while actions_done < max_actions:
+            while True:
+                if (not infinite) and actions_done >= max_actions:
+                    break
                 posts = self._find_visible_posts(limit=8)
                 if not posts:
                     # Scroll to load more
                     self._scroll_feed()
                     page_scrolls += 1
-                    if page_scrolls > 20:
+                    if (not infinite) and page_scrolls > 20:
                         logging.info("No more posts found after many scrolls; stopping")
                         break
                     continue
 
                 # Process each visible post exactly once
                 for post_root in posts:
-                    if actions_done >= max_actions:
+                    if (not infinite) and actions_done >= max_actions:
                         break
                     # Make sure the post is centered and interactive
                     try:
@@ -303,7 +311,7 @@ class EngageStreamMixin:
                             human_pause(dmin, dmax)
 
                 # After processing current viewport, scroll to load more
-                if actions_done < max_actions:
+                if infinite or (actions_done < max_actions):
                     self._scroll_feed()
 
             logging.info(f"Engage stream finished (actions={actions_done})")

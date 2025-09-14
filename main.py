@@ -123,6 +123,11 @@ def setup_argument_parser():
         help="Continuously like/comment posts in your feed (MVP)."
     )
     parser.add_argument(
+        "--infinite",
+        action="store_true",
+        help="Run engage stream indefinitely until Ctrl+C (ignores --max-actions).",
+    )
+    parser.add_argument(
         "--stream-comment",
         default=None,
         help="Comment text to use when --engage-stream is 'comment' or 'both'."
@@ -252,6 +257,7 @@ def main():
                 delay_max=args.delay_max,
                 mention_author=args.mention_author,
                 mention_position=args.author_mention_position,
+                infinite=args.infinite,
             )
             bot.close()
             return 0 if ok else 1
