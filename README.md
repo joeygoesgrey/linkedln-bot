@@ -198,6 +198,7 @@ Options:
 - `--infinite` (ignore max-actions and continue until Ctrl+C)
 - `--include-promoted` (skip by default)
 - `--delay-min/--delay-max` human‑like delays
+- `--scroll-wait-min/--scroll-wait-max`: wait window after scrolls; increase for slow networks
 
 De‑dupe & reliability:
 - The stream tracks posts per run using URNs or a text hash and will not comment twice on the same post in a session.
@@ -329,3 +330,9 @@ Contributions are welcome! Please open an issue or PR.
 - feat: add mentions (people tagging) support in `post_to_linkedin(text, image_paths=None, mentions=None)`
 - docs: usage example for mentions and README updates
 - feat: add `--image` CLI flag to attach explicit image files for direct posts
+- Scrolling diagnostics:
+  - `SCROLL visible_posts=…` shows how many posts are visible in the viewport.
+  - `SCROLL action=… height_before=… height_after=… delta=…` logs page height changes after a scroll.
+  - `SCROLL_FALLBACK end_key_sent` indicates the End key fallback was used when height did not increase.
+  - `SCROLL_STALL extended_wait=…s` indicates a longer wait to allow the feed to load when stalled.
+  - `SCROLL_AGG attempt=…` runs multiple bottom-scroll strategies until new posts appear.
