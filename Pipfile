@@ -1,0 +1,20 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+selenium = "*"
+requests = "*"
+webdriver-manager = "*"
+python-dotenv = "*"
+google-generativeai = "*"
+beautifulsoup4 = "*"
+scrapy = "*"
+scrapy-selenium = "*"
+scrapy-playwright = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.10"
