@@ -76,7 +76,7 @@ class MentionsMixin:
                 return False
         return True
 
-    def _insert_mentions(self, post_area, names, leading_space=True, force_end=False):
+    def _insert_mentions(self, post_area, names, leading_space=True, force_end=False, force_start=False):
         if not names:
             return
         try:
@@ -91,6 +91,13 @@ class MentionsMixin:
                 self.random_delay(0.1, 0.2)
             except Exception:
                 pass
+        # Ensure caret at start if requested
+        if force_start:
+            try:
+                self._move_caret_to_start(post_area)
+                self.random_delay(0.1, 0.2)
+            except Exception:
+                pass
         try:
             self._dismiss_global_search_overlay()
         except Exception:
@@ -99,15 +106,19 @@ class MentionsMixin:
         for name in names:
             try:
                 # Ensure separation before '@' so tray appears reliably
-                need_space = True
-                try:
-                    last_char = self.driver.execute_script(
-                        "return (arguments[0].innerText||'').slice(-1);",
-                        post_area,
-                    ) or ""
-                    need_space = leading_space or (not last_char or (isinstance(last_char, str) and not last_char.isspace()))
-                except Exception:
+                # Compute whether a separating space is needed
+                if force_end or force_start:
+                    need_space = bool(leading_space)
+                else:
                     need_space = True
+                    try:
+                        last_char = self.driver.execute_script(
+                            "return (arguments[0].innerText||'').slice(-1);",
+                            post_area,
+                        ) or ""
+                        need_space = leading_space or (not last_char or (isinstance(last_char, str) and not last_char.isspace()))
+                    except Exception:
+                        need_space = True
                 if need_space:
                     try:
                         post_area.send_keys(" ")
