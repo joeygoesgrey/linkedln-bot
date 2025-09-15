@@ -843,7 +843,8 @@ class EngageStreamMixin:
                 except Exception:
                     pass
                 try:
-                    self._insert_mentions(editor, [author], leading_space=False)
+                    # Move caret to start and insert mention with no leading space
+                    self._insert_mentions(editor, [author], leading_space=False, force_start=True)
                     try:
                         editor.send_keys(" ")
                     except Exception:

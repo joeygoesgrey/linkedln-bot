@@ -142,3 +142,45 @@ class BaseInteraction:
         except Exception as e:
             logging.debug(f"CARET move_to_end failed: {e}")
             return False
+
+    def _move_caret_to_start(self, contenteditable_element):
+        """Move the caret to the start of a contenteditable element reliably.
+
+        Tries JS range selection collapsed at the start; falls back to sending Home key.
+        """
+        try:
+            js = """
+                const el = arguments[0];
+                if (!el) return false;
+                try {
+                  const range = document.createRange();
+                  range.selectNodeContents(el);
+                  range.collapse(true);
+                  const sel = window.getSelection();
+                  sel.removeAllRanges();
+                  sel.addRange(range);
+                  return true;
+                } catch (e) {
+                  try { el.focus && el.focus(); } catch(e2){}
+                  return false;
+                }
+            """
+            ok = self.driver.execute_script(js, contenteditable_element)
+            if ok:
+                logging.info("CARET moved_to_start via JS range")
+                return True
+        except Exception:
+            pass
+        # Fallback: try focusing element and sending Home key
+        try:
+            try:
+                contenteditable_element.click()
+            except Exception:
+                self._click_element_with_fallback(contenteditable_element, "contenteditable focus (caret-start)")
+            actions = ActionChains(self.driver)
+            actions.send_keys(Keys.HOME).perform()
+            logging.info("CARET moved_to_start via Keys.HOME fallback")
+            return True
+        except Exception as e:
+            logging.debug(f"CARET move_to_start failed: {e}")
+            return False
