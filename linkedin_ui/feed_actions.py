@@ -267,20 +267,90 @@ class FeedActionsMixin:
             return False
         self.random_delay(0.4, 0.8)
 
-        # Choose 'Repost with your thoughts'
+        # Choose 'Repost with your thoughts' (robust search)
         option = None
-        option_selectors = [
-            "//button[.//span[contains(normalize-space(),'Repost with your thoughts')]]",
-            "//div[contains(@class,'artdeco-dropdown__content')]//button[contains(.,'Repost with your thoughts')]",
-        ]
-        for sel in option_selectors:
+        # First, try to scope to a dropdown content element near the bar
+        dropdown_containers = []
+        for xp in [
+            ".//div[contains(@class,'artdeco-dropdown__content')]",
+            ".//div[contains(@class,'social-reshare-button__share-dropdown-content')]",
+            "//div[contains(@class,'artdeco-dropdown__content')]",
+        ]:
             try:
-                option = WebDriverWait(self.driver, 4).until(
-                    EC.element_to_be_clickable((By.XPATH, sel))
-                )
-                break
+                c = WebDriverWait(bar, 2).until(EC.presence_of_element_located((By.XPATH, xp)))
+                if c and c.is_displayed():
+                    dropdown_containers.append(c)
             except Exception:
                 continue
+        if not dropdown_containers:
+            # Global fallback (dropdown content may not be under bar)
+            try:
+                c = WebDriverWait(self.driver, 2).until(
+                    EC.presence_of_element_located((By.XPATH, "//div[contains(@class,'artdeco-dropdown__content')]"))
+                )
+                if c:
+                    dropdown_containers.append(c)
+            except Exception:
+                pass
+
+        # Candidate text patterns (case-insensitive)
+        text_candidates = [
+            "repost with your thoughts",
+            "repost with thoughts",
+            "share with your thoughts",
+            "reshare with your thoughts",
+        ]
+
+        def _find_option_in(container):
+            # Try common clickable tags first
+            tag_sets = [
+                ".//button",
+                ".//*[@role='menuitem']",
+                ".//li",
+                ".//div",
+                ".//span",
+            ]
+            for ts in tag_sets:
+                try:
+                    nodes = container.find_elements(By.XPATH, ts)
+                except Exception:
+                    nodes = []
+                for n in nodes:
+                    try:
+                        if not n.is_displayed():
+                            continue
+                        txt = (n.text or "").strip().lower()
+                        if not txt:
+                            continue
+                        for cand in text_candidates:
+                            if cand in txt:
+                                return n
+                    except Exception:
+                        continue
+            return None
+
+        for container in dropdown_containers:
+            option = _find_option_in(container)
+            if option:
+                break
+        if not option:
+            # Global catch-all search for any visible node with the text
+            try:
+                option = None
+                for cand in text_candidates:
+                    xp = f"//*[contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), '{cand}')]"
+                    nodes = self.driver.find_elements(By.XPATH, xp)
+                    for n in nodes:
+                        try:
+                            if n.is_displayed():
+                                option = n
+                                break
+                        except Exception:
+                            continue
+                    if option:
+                        break
+            except Exception:
+                option = None
         if not option:
             logging.error("'Repost with your thoughts' option not found")
             return False
