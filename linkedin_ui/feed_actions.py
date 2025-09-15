@@ -225,3 +225,170 @@ class FeedActionsMixin:
 
         self.random_delay(0.8, 1.5)
         return posted
+
+    def repost_first_post(self, thoughts_text: str, mention_author: bool = False, mention_position: str = 'append') -> bool:
+        """
+        Repost the first visible post with thoughts (and optional author mention).
+
+        Steps:
+        - Find first post's action bar and click Repost dropdown
+        - Choose 'Repost with your thoughts'
+        - Type thoughts text; optionally insert author mention at start/append
+        - Click Post/Share
+        """
+        if not isinstance(thoughts_text, str) or not thoughts_text.strip():
+            logging.error("repost_first_post requires non-empty thoughts_text")
+            return False
+
+        self._goto_feed()
+        bar = self._first_action_bar()
+        if not bar:
+            logging.error("Could not find social action bar for first post (repost)")
+            return False
+
+        # Open the Repost dropdown
+        repost_btn = None
+        for sel in [
+            ".//button[contains(@class,'social-reshare-button')]",
+            ".//button[.//span[normalize-space()='Repost']]",
+            ".//button[@data-finite-scroll-hotkey='r']",
+        ]:
+            try:
+                el = bar.find_element(By.XPATH, sel)
+                if el and el.is_displayed():
+                    repost_btn = el
+                    break
+            except Exception:
+                continue
+        if not repost_btn:
+            logging.error("Repost button not found on first post")
+            return False
+        if not self._click_element_with_fallback(repost_btn, "Repost dropdown"):
+            return False
+        self.random_delay(0.4, 0.8)
+
+        # Choose 'Repost with your thoughts'
+        option = None
+        option_selectors = [
+            "//button[.//span[contains(normalize-space(),'Repost with your thoughts')]]",
+            "//div[contains(@class,'artdeco-dropdown__content')]//button[contains(.,'Repost with your thoughts')]",
+        ]
+        for sel in option_selectors:
+            try:
+                option = WebDriverWait(self.driver, 4).until(
+                    EC.element_to_be_clickable((By.XPATH, sel))
+                )
+                break
+            except Exception:
+                continue
+        if not option:
+            logging.error("'Repost with your thoughts' option not found")
+            return False
+        if not self._click_element_with_fallback(option, "Repost with your thoughts"):
+            return False
+        self.random_delay(0.6, 1.2)
+
+        # Find the repost editor
+        editor = None
+        editor_xpaths = [
+            "//div[contains(@class,'editor-container')]//div[@contenteditable='true']",
+            "//div[contains(@class,'ql-editor') and @contenteditable='true']",
+            "//div[@contenteditable='true' and contains(@aria-label,'Text editor')]",
+        ]
+        for xp in editor_xpaths:
+            try:
+                editor = WebDriverWait(self.driver, 6).until(
+                    EC.presence_of_element_located((By.XPATH, xp))
+                )
+                if editor and editor.is_displayed():
+                    break
+            except Exception:
+                continue
+        if not editor:
+            logging.error("Could not find repost thoughts editor")
+            return False
+        try:
+            self._click_element_with_fallback(editor, "repost editor focus")
+        except Exception:
+            pass
+
+        # Compose base text
+        try:
+            editor.send_keys(thoughts_text)
+        except Exception:
+            try:
+                cleaned = thoughts_text.replace('"', '\\"').replace("'", "\\'").replace("\n", "\\n")
+                self.driver.execute_script("arguments[0].innerHTML = arguments[1];", editor, cleaned)
+            except Exception as e:
+                logging.error(f"Failed to type thoughts text: {e}")
+                return False
+
+        # Mention author appended by default (or prepend if specified)
+        if mention_author:
+            author = None
+            try:
+                root = self._find_post_root_for_bar(bar)
+                author = self._extract_author_name(root) if root is not None else None
+            except Exception:
+                author = None
+            if author:
+                try:
+                    if (mention_position or 'append') == 'prepend':
+                        # Move caret to start and insert
+                        try:
+                            self._move_caret_to_start(editor)
+                        except Exception:
+                            pass
+                        self._insert_mentions(editor, [author], leading_space=False, force_start=True)
+                        try:
+                            editor.send_keys(" ")
+                        except Exception:
+                            pass
+                    else:
+                        # Append at end
+                        try:
+                            self._move_caret_to_end(editor)
+                        except Exception:
+                            pass
+                        try:
+                            editor.send_keys(" ")
+                        except Exception:
+                            pass
+                        self._insert_mentions(editor, [author], leading_space=True, force_end=True)
+                        try:
+                            editor.send_keys(" ")
+                        except Exception:
+                            pass
+                except Exception:
+                    try:
+                        if (mention_position or 'append') == 'prepend':
+                            editor.send_keys(f"@{author} ")
+                        else:
+                            self._move_caret_to_end(editor)
+                            editor.send_keys(f" @{author} ")
+                    except Exception:
+                        pass
+
+        # Click Post/Share
+        post_btn = None
+        for sel in [
+            "//button[.//span[normalize-space()='Post']]",
+            "//button[contains(@aria-label,'Post')]",
+            "//button[.//span[normalize-space()='Share']]",
+            "//button[contains(@aria-label,'Share')]",
+        ]:
+            try:
+                post_btn = WebDriverWait(self.driver, 6).until(
+                    EC.element_to_be_clickable((By.XPATH, sel))
+                )
+                break
+            except Exception:
+                continue
+        if not post_btn:
+            logging.error("Could not find Post/Share button for repost")
+            return False
+        if not self._click_element_with_fallback(post_btn, "Submit repost"):
+            return False
+
+        self.random_delay(1.0, 1.8)
+        return True

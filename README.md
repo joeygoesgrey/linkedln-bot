@@ -77,6 +77,29 @@ Common flags:
 - `--no-ai`: Skip AI generation and use local templates/randomized posts.
 
 On success, the used topic is removed from the file.
+
+### CLI Cheatsheet (Most‑used Commands)
+
+- Post with topics file (AI on):
+  - `python main.py --topics-file Topics.txt --images-dir static --headless --debug`
+- Post with built‑in templates (AI off):
+  - `python main.py --headless --debug --no-ai`
+- Direct post with exact text (no AI) + attach images:
+  - `python main.py --post-text "Shipping day!" --image ./static/1.png --debug --no-ai`
+- Direct post + anchors that become mentions:
+  - `python main.py --post-text "Thanks to the core team for the push" --mention-anchor "for the push" --mention-name "Ada Lovelace" --debug --no-ai`
+- One‑shot feed actions:
+  - Like first post: `python main.py --debug --like-first`
+  - Comment first post: `python main.py --debug --comment-first "Nice take!"`
+  - Auto‑mention author in one‑shot comment: add `--mention-author --author-mention-position prepend|append`
+- Engage stream (comment only, author mention appended):
+  - `python main.py --debug --engage-stream comment --stream-comment "Great point!" --mention-author --author-mention-position append`
+- Engage stream (both, infinite until Ctrl+C):
+  - `python main.py --debug --engage-stream both --stream-comment "Great point!" --mention-author --infinite`
+
+Global tips:
+- For first runs, set `HEADLESS=false` in env or omit `--headless` to watch the flow.
+- Use `--delay-min/--delay-max` for human‑like pacing and `--scroll-wait-min/--scroll-wait-max` on slow networks.
  
 ### Post with images
  
@@ -160,6 +183,8 @@ li.post_to_linkedin(text, image_paths=None)
 Rules:
 - Use `@{Display Name}` to place a mention at that exact position.
 - Your own spaces/punctuation are preserved. If suggestions don’t appear, the bot falls back to literal `@name`.
+- The engine nudges the editor (space+backspace) and waits up to ~8s for suggestions; it prefers the top item and verifies a real entity was inserted.
+- Names containing emoji or non‑BMP characters are sanitized while typing to avoid driver errors.
 
 ### Like and Comment (Feed)
 
@@ -169,6 +194,8 @@ One‑shot helpers:
 - Comment first post: `python main.py --debug --comment-first "Nice take!"`
 - Tag someone in a comment: `--comment-first "Thanks @{Ada Lovelace}!"`
 - Auto‑tag the post author: add `--mention-author` (optional `--author-mention-position prepend|append`, default append)
+- Repost first post (with thoughts):
+  - `python main.py --debug --repost-first --repost-thoughts "My take on this 👇" --mention-author --author-mention-position append`
 
 Engage stream (MVP):
 
@@ -199,6 +226,11 @@ Options:
 - `--include-promoted` (skip by default)
 - `--delay-min/--delay-max` human‑like delays
 - `--scroll-wait-min/--scroll-wait-max`: wait window after scrolls; increase for slow networks
+
+Commenting behavior:
+- Order is comment‑then‑like. In `comment` mode a courtesy Like is added but not counted.
+- Add `--mention-author` to mention the post author in each comment. Choose placement with `--author-mention-position prepend|append`.
+- Placement safety: prepend forces caret to the start; append forces caret to the end so mentions never land mid‑text.
 
 De‑dupe & reliability:
 - The stream tracks posts per run using URNs or a text hash and will not comment twice on the same post in a session.
@@ -267,6 +299,31 @@ When typing an @mention, LinkedIn shows a suggestion popover (often under a cont
 Config:
 - `CAPTURE_TYPEAHEAD_HTML` (default: `false`): Turn on snapshots.
 - `TYPEAHEAD_CAPTURE_DIR` (default: `logs/typeahead`): Override output folder.
+
+## Environment & Config Reference
+
+Required env in `.env`:
+- `LINKEDIN_USERNAME`, `LINKEDIN_PASSWORD`: Login credentials.
+- `GEMINI_API_KEY`: Google Gemini API key (omit or set `USE_GEMINI=false` to disable AI).
+
+Optional env:
+- `HEADLESS=true|false`: Default browser headless mode (CLI `--headless` overrides).
+- `USE_GEMINI=true|false`: Toggle AI generation globally (CLI `--no-ai` overrides).
+- `CUSTOM_POSTS_FILE=CustomPosts.txt`: Local templates for fallback content.
+- `CAPTURE_TYPEAHEAD_HTML=true`: Save typeahead HTML/JSON under `logs/typeahead`.
+- `TYPEAHEAD_CAPTURE_DIR=...`: Override capture folder.
+
+Runtime flags (selected):
+- Posting: `--topics-file`, `--post-text`, `--no-ai`, `--images-dir`, `--image`, `--no-images`.
+- Mentions: `--mention-anchor` + `--mention-name` (pairs); inline tokens `@{Name}` inside text.
+- Feed one‑shots: `--like-first`, `--comment-first`, `--mention-author`, `--author-mention-position`.
+- Stream: `--engage-stream like|comment|both`, `--stream-comment`, `--max-actions`, `--infinite`, `--include-promoted`, `--delay-min`, `--delay-max`, `--scroll-wait-min`, `--scroll-wait-max`.
+- Misc: `--debug`, `--headless`.
+
+Logs:
+- All runs write to `logs/linkedin_bot_<timestamp>.log`.
+- Engage diagnostics include: `ENGAGE_HARDENED`, `ENGAGE_KEYS`, `ENGAGE_SKIP`, `COMMENT_ORDER`, `SCROLL*`, and `MENTIONS_*` lines.
+- Engage de‑dupe cache: `logs/engage_state.json` (7‑day TTL). Delete to reset history.
 
 ## Notes
 

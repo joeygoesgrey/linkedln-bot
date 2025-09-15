@@ -105,6 +105,16 @@ def setup_argument_parser():
         help="Comment this text on the first visible post in your feed and exit."
     )
     parser.add_argument(
+        "--repost-first",
+        action="store_true",
+        help="Repost the first visible post; requires --repost-thoughts for 'with thoughts'."
+    )
+    parser.add_argument(
+        "--repost-thoughts",
+        default=None,
+        help="Text to use for 'Repost with your thoughts' on the first post."
+    )
+    parser.add_argument(
         "--mention-author",
         action="store_true",
         help="When commenting, automatically tag the post author."
@@ -242,13 +252,23 @@ def main():
         bot = LinkedInBot()
 
         # If direct feed actions were requested, run and exit
-        if args.like_first or args.comment_first:
+        if args.like_first or args.comment_first or args.repost_first:
             ok = True
             if args.like_first:
                 ok = ok and bot.linkedin.like_first_post()
             if args.comment_first:
                 ok = ok and bot.linkedin.comment_first_post(
                     args.comment_first,
+                    mention_author=args.mention_author,
+                    mention_position=args.author_mention_position,
+                )
+            if args.repost_first:
+                if not (args.repost_thoughts and args.repost_thoughts.strip()):
+                    logging.error("--repost-thoughts is required when using --repost-first")
+                    bot.close()
+                    return 1
+                ok = ok and bot.linkedin.repost_first_post(
+                    args.repost_thoughts,
                     mention_author=args.mention_author,
                     mention_position=args.author_mention_position,
                 )
