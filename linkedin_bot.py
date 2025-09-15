@@ -35,7 +35,7 @@ class LinkedInBot:
         self.linkedin = LinkedInInteraction(self.driver)
         self.linkedin.login()
 
-    def process_topics(self, topic_file_path=None, image_directory=None):
+    def process_topics(self, topic_file_path=None, image_directory=None, schedule_date=None, schedule_time=None):
         """
         Processes topics from a text file, generates content, and posts to LinkedIn.
         
@@ -90,7 +90,12 @@ class LinkedInBot:
                     logging.info(f"Posting with {len(images_to_post)} images")
                 else:
                     logging.info("Posting text only, no images selected")
-                post_success = self.linkedin.post_to_linkedin(post_content, images_to_post)
+                post_success = self.linkedin.post_to_linkedin(
+                    post_content,
+                    image_paths=images_to_post,
+                    schedule_date=schedule_date,
+                    schedule_time=schedule_time,
+                )
                 
                 # If posting was successful, remove the topic from the list
                 if post_success:
@@ -105,7 +110,7 @@ class LinkedInBot:
         except Exception as e:
             logging.error("An error occurred while processing topics.", exc_info=True)
             
-    def post_custom_text(self, post_text, image_directory=None, mention_anchors=None, mention_names=None, image_paths=None):
+    def post_custom_text(self, post_text, image_directory=None, mention_anchors=None, mention_names=None, image_paths=None, schedule_date=None, schedule_time=None):
         """
         Post a custom text (provided via CLI or API) with optional images and anchor-based mentions.
 
@@ -161,7 +166,12 @@ class LinkedInBot:
                 return False
 
             # Post
-            ok = self.linkedin.post_to_linkedin(processed_text, images_to_post)
+            ok = self.linkedin.post_to_linkedin(
+                processed_text,
+                image_paths=images_to_post,
+                schedule_date=schedule_date,
+                schedule_time=schedule_time,
+            )
             if ok:
                 logging.info("Successfully posted custom text")
             else:

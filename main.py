@@ -74,6 +74,18 @@ def setup_argument_parser():
         help="Disable AI generation and use local templates/randomized posts."
     )
 
+    # Optional: schedule post later (composer only)
+    parser.add_argument(
+        "--schedule-date",
+        default=None,
+        help="Schedule date in mm/dd/yyyy (composer only)."
+    )
+    parser.add_argument(
+        "--schedule-time",
+        default=None,
+        help="Schedule time (e.g., '10:45 AM') (composer only)."
+    )
+
     # Direct post mode with text and anchor-based mentions
     parser.add_argument(
         "--post-text",
@@ -317,13 +329,15 @@ def main():
                 anchors,
                 names,
                 image_paths=image_files if image_files else None,
+                schedule_date=args.schedule_date,
+                schedule_time=args.schedule_time,
             )
             # Close and return based on result
             bot.close()
             return 0 if ok else 1
 
         # Otherwise process topics normally
-        bot.process_topics(topics_file_to_use, images_dir)
+        bot.process_topics(topics_file_to_use, images_dir, schedule_date=args.schedule_date, schedule_time=args.schedule_time)
         
         # Close the bot resources
         bot.close()
