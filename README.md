@@ -131,6 +131,12 @@ Notes:
 - Supported formats: `.png`, `.jpg`, `.jpeg`, `.gif`.
 - If both `--image` and `--images-dir` are provided, `--image` takes precedence for direct posts.
 
+Multiple images:
+- Provide `--image` multiple times:
+  - `python main.py --post-text "Launching today!" --image ./static/1.jpg --image ./static/2.jpg --image ./static/3.jpg --debug --no-ai`
+- Or use a folder and let the bot pick up to 3 randomly:
+  - `python main.py --post-text "Launching today!" --images-dir ./static --debug --no-ai`
+
 ### How image uploads work (no OS dialog)
 
 - The bot clicks the composer’s “Add media” button, then locates the hidden `input[type=file]` inside the media tray (e.g., `#media-editor-file-selector__file-input`).
@@ -393,3 +399,19 @@ Contributions are welcome! Please open an issue or PR.
   - `SCROLL_FALLBACK end_key_sent` indicates the End key fallback was used when height did not increase.
   - `SCROLL_STALL extended_wait=…s` indicates a longer wait to allow the feed to load when stalled.
   - `SCROLL_AGG attempt=…` runs multiple bottom-scroll strategies until new posts appear.
+### Schedule post (composer)
+
+You can schedule a post for later when using the composer path (not engage stream):
+
+```bash
+python main.py --debug \
+  --post-text "See you tomorrow!" \
+  --images-dir static \
+  --schedule-date 09/16/2025 \
+  --schedule-time "10:45 AM"
+```
+
+Notes:
+- Date format is `mm/dd/yyyy` as expected by LinkedIn’s date field.
+- Time accepts values like `10:45 AM` or `4:30 PM` based on your locale.
+- After setting date/time, the flow clicks Next and confirms by clicking Schedule.

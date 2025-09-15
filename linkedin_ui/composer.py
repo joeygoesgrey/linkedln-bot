@@ -24,7 +24,7 @@ import config
 
 
 class ComposerMixin:
-    def post_to_linkedin(self, post_text, image_paths=None, mentions=None):
+    def post_to_linkedin(self, post_text, image_paths=None, mentions=None, schedule_date=None, schedule_time=None):
         try:
             logging.info("Posting to LinkedIn.")
             self.driver.get(config.LINKEDIN_FEED_URL)
@@ -62,40 +62,48 @@ class ComposerMixin:
                 if not self.upload_images_to_post(image_paths):
                     logging.warning("Image upload failed, continuing with text-only post")
             self.random_delay()
-            post_button = self._find_post_button()
-            if not post_button:
-                logging.error("Could not find 'Post' button")
-                return False
-            self.dismiss_overlays(preserve_share_modal=True)
-            self.random_delay(1, 2)
-            post_button = self._find_post_button()
-            clicked = False
-            if post_button and self._click_element_with_fallback(post_button, "Post"):
-                clicked = True
-            if not clicked:
-                logging.info("Re-locating 'Post' button after click failure and retrying")
-                for _ in range(2):
-                    self.random_delay(1, 2)
-                    post_button = self._find_post_button()
-                    if not post_button:
-                        continue
-                    try:
-                        self.driver.execute_script(
-                            "arguments[0].scrollIntoView({block: 'center'});", post_button
-                        )
-                    except Exception:
-                        pass
-                    if self._click_element_with_fallback(post_button, "Post"):
+            # Schedule flow (optional)
+            if schedule_date and schedule_time:
+                if not self._schedule_post(schedule_date, schedule_time):
+                    logging.error("Failed to schedule post (date/time inputs)")
+                    return False
+                # After Next, attempt to click 'Schedule' primary action
+                clicked = self._click_schedule_confirm()
+            else:
+                post_button = self._find_post_button()
+                if not post_button:
+                    logging.error("Could not find 'Post' button")
+                    return False
+                self.dismiss_overlays(preserve_share_modal=True)
+                self.random_delay(1, 2)
+                post_button = self._find_post_button()
+                clicked = False
+                if post_button and self._click_element_with_fallback(post_button, "Post"):
+                    clicked = True
+                if not clicked:
+                    logging.info("Re-locating 'Post' button after click failure and retrying")
+                    for _ in range(2):
+                        self.random_delay(1, 2)
+                        post_button = self._find_post_button()
+                        if not post_button:
+                            continue
+                        try:
+                            self.driver.execute_script(
+                                "arguments[0].scrollIntoView({block: 'center'});", post_button
+                            )
+                        except Exception:
+                            pass
+                        if self._click_element_with_fallback(post_button, "Post"):
+                            clicked = True
+                            break
+                if not clicked:
+                    logging.info("Trying keyboard submit (Ctrl/Cmd + Enter)")
+                    if self._submit_via_keyboard():
                         clicked = True
-                        break
-            if not clicked:
-                logging.info("Trying keyboard submit (Ctrl/Cmd + Enter)")
-                if self._submit_via_keyboard():
-                    clicked = True
-            if not clicked:
-                logging.info("Trying JS-based Post button click")
-                if self._click_post_via_js():
-                    clicked = True
+                if not clicked:
+                    logging.info("Trying JS-based Post button click")
+                    if self._click_post_via_js():
+                        clicked = True
             if not clicked:
                 logging.error("Failed to click the Post button after several attempts")
                 return False
@@ -109,6 +117,127 @@ class ComposerMixin:
         except Exception as e:
             logging.error(f"Failed to post to LinkedIn: {e}", exc_info=True)
             return False
+
+    def _schedule_post(self, date_str: str, time_str: str) -> bool:
+        try:
+            # Click the Schedule post button in the composer footer
+            schedule_btn_selectors = [
+                "//button[contains(@class,'share-actions__scheduled-post-btn')]",
+                "//button[@aria-label='Schedule post']",
+                "//button[.//svg/*[contains(@data-test-icon,'clock')]]",
+            ]
+            btn = None
+            for xp in schedule_btn_selectors:
+                try:
+                    btn = self.driver.find_element(By.XPATH, xp)
+                    if btn and btn.is_displayed():
+                        break
+                except Exception:
+                    continue
+            if not btn:
+                logging.error("Schedule button not found in composer")
+                return False
+            if not self._click_element_with_fallback(btn, "Schedule post"):
+                return False
+            self.random_delay(0.8, 1.4)
+
+            # Wait for modal and fill date
+            # Date input
+            date_input = None
+            for sel in [
+                "//input[@id='share-post__scheduled-date']",
+                "//input[@name='artdeco-date']",
+                "//input[@aria-label='Date']",
+                "//div[contains(@class,'artdeco-datepicker__input')]//input",
+            ]:
+                try:
+                    date_input = WebDriverWait(self.driver, 6).until(
+                        EC.presence_of_element_located((By.XPATH, sel))
+                    )
+                    if date_input:
+                        break
+                except Exception:
+                    continue
+            if not date_input:
+                logging.error("Schedule modal: date input not found")
+                return False
+            try:
+                date_input.clear()
+            except Exception:
+                pass
+            date_input.send_keys(date_str)
+            self.random_delay(0.2, 0.4)
+
+            # Time input
+            time_input = None
+            for sel in [
+                "//input[@id='share-post__scheduled-time']",
+                "//input[@aria-label='Time']",
+                "//div[contains(@class,'timepicker')]//input",
+            ]:
+                try:
+                    time_input = WebDriverWait(self.driver, 6).until(
+                        EC.presence_of_element_located((By.XPATH, sel))
+                    )
+                    if time_input:
+                        break
+                except Exception:
+                    continue
+            if not time_input:
+                logging.error("Schedule modal: time input not found")
+                return False
+            try:
+                time_input.clear()
+            except Exception:
+                pass
+            time_input.send_keys(time_str)
+            self.random_delay(0.2, 0.4)
+
+            # Click Next in the modal
+            next_btn = None
+            for xp in [
+                "//button[.//span[normalize-space()='Next']]",
+                "//button[@aria-label='Next']",
+                "//div[contains(@class,'share-box-footer')]//button[contains(.,'Next')]",
+            ]:
+                try:
+                    next_btn = WebDriverWait(self.driver, 6).until(
+                        EC.element_to_be_clickable((By.XPATH, xp))
+                    )
+                    if next_btn:
+                        break
+                except Exception:
+                    continue
+            if not next_btn:
+                logging.error("Schedule modal: 'Next' button not found")
+                return False
+            if not self._click_element_with_fallback(next_btn, "Schedule Next"):
+                return False
+            self.random_delay(0.8, 1.4)
+            return True
+        except Exception as e:
+            logging.error(f"Schedule flow failed: {e}")
+            return False
+
+    def _click_schedule_confirm(self) -> bool:
+        try:
+            # Confirm by clicking a button labeled 'Schedule'
+            for xp in [
+                "//button[.//span[normalize-space()='Schedule']]",
+                "//button[contains(@aria-label,'Schedule')]",
+                "//button[contains(.,'Schedule')]",
+            ]:
+                try:
+                    btn = WebDriverWait(self.driver, 6).until(
+                        EC.element_to_be_clickable((By.XPATH, xp))
+                    )
+                    if btn and self._click_element_with_fallback(btn, "Confirm Schedule"):
+                        return True
+                except Exception:
+                    continue
+        except Exception as e:
+            logging.info(f"Schedule confirm failed: {e}")
+        return False
 
     def _find_start_post_button(self):
         start_post_selectors = [
@@ -285,4 +414,3 @@ class ComposerMixin:
             except Exception as js_e:
                 logging.error(f"Failed to set post text: {js_e}")
                 return False
-
