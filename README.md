@@ -1,107 +1,103 @@
-# LinkedIn Automation Bot (feature/recorder-headful)
+# LinkedIn Automation Bot
 
-Automate creating LinkedIn posts with optional AI‑generated content and media uploads. The bot uses Python, Selenium, and the Google Gemini API to generate and publish posts.
+Post, schedule, repost, like and comment on LinkedIn from your terminal. It opens a real Chrome browser and clicks the UI for you.
 
-This branch focuses on a headful recorder experience to capture the exact selectors and UI flows used when you manually create a LinkedIn post with text + image. Use it whenever LinkedIn’s UI shifts.
+## Table of Contents
+- [Install & Set Up](#install--set-up)
+- [Commands (copy/paste)](#commands-copypaste)
+- [Options (most useful)](#options-most-useful)
+- [Posting with Images](#posting-with-images)
+- [Tag People (Mentions)](#tag-people-mentions)
+- [Like and Comment (Feed)](#like-and-comment-feed)
+- [Direct CLI Post Text + Anchors for Tagging](#direct-cli-post-text--anchors-for-tagging)
+- [Environment & Config Reference](#environment--config-reference)
+- [Notes](#notes)
+- [Safety](#safety)
+- [Project Status (What’s working now)](#project-status-whats-working-now)
+- [Contributing](#contributing)
+- [Changelog](#changelog)
 
-## Features
+---
 
-- **Auto‑posting:** Generates and publishes LinkedIn posts from topic prompts.
-- **AI content:** Uses Google Gemini to create engaging, on‑topic copy (with template fallback).
-- **Media uploads:** Optionally attach up to 3 images from a directory.
-- **Resilient selectors:** Multiple selector strategies and overlay dismissal.
-- **Structured logging:** File + console logs per run.
-- **Tag people (mentions):** Insert "@Name" mentions that resolve to clickable tags.
+## Install & Set Up
 
-## Tech Stack
-
-- **Python + Selenium:** Browser automation via undetected‑chromedriver with fallbacks.
-- **Google Gemini API:** AI content via `google-generativeai`.
-- **BeautifulSoup:** Light content processing helpers.
-- **dotenv + logging:** Configuration and logs.
-
-## Prerequisites
-
-- Python 3.9+
-- A Google Gemini API key
-- Chrome/Chromium installed (driver handled automatically)
-
-## Setup
-
-1. Install dependencies (choose one):
-
-   - pip:
-     ```bash
-     pip install -r requirements.txt
-     ```
-   - pipenv:
-     ```bash
-     pipenv install && pipenv shell
-     ```
-
-2. Create a `.env` in the repo root:
-
-   ```ini
-   LINKEDIN_USERNAME=your_email_or_username
-   LINKEDIN_PASSWORD=your_password
-   GEMINI_API_KEY=your_gemini_api_key
-   # Optional: override headless browser mode
-   # HEADLESS=true
-   # Optional: path to your custom local post templates (one per line; supports {topic})
-   # CUSTOM_POSTS_FILE=CustomPosts.txt
-   ```
-
-3. (Optional) Prepare a topics file (default: `Topics.txt`) with one topic per line. If missing, the bot falls back to built‑in topics/templates.
-
-## Usage
-
-Use the CLI entry point `main.py`:
+1) Install dependencies
 
 ```bash
-# With topics file
-python main.py --topics-file Topics.txt --images-dir static --headless --debug
-
-# No topics file (uses built-in templates)
-python main.py --images-dir static --headless --debug
-
-# No topics file + skip AI (use local templates/randomized posts)
-python main.py --images-dir static --headless --debug --no-ai
+pip install -r requirements.txt
 ```
 
-Common flags:
-- `--topics-file`: Path to a text file of topics (default `Topics.txt`).
-- `--images-dir`: Directory of images to attach (optional; picks up to 3).
-- `--no-images`: Force text‑only posts even if `--images-dir` is provided.
-- `--headless`: Run Chrome in headless mode.
-- `--debug`: Enable verbose logging.
-- `--no-ai`: Skip AI generation and use local templates/randomized posts.
+2) Add your credentials to `.env`
 
-On success, the used topic is removed from the file.
+```ini
+LINKEDIN_USERNAME=your_email_or_username
+LINKEDIN_PASSWORD=your_password
+GEMINI_API_KEY=your_gemini_api_key   # optional (AI); set USE_GEMINI=false to skip
+# HEADLESS=false                      # set false to watch the browser
+```
 
-### CLI Cheatsheet (Most‑used Commands)
+---
 
-- Post with topics file (AI on):
-  - `python main.py --topics-file Topics.txt --images-dir static --headless --debug`
-- Post with built‑in templates (AI off):
-  - `python main.py --headless --debug --no-ai`
-- Direct post with exact text (no AI) + attach images:
-  - `python main.py --post-text "Shipping day!" --image ./static/1.png --debug --no-ai`
-- Direct post + anchors that become mentions:
-  - `python main.py --post-text "Thanks to the core team for the push" --mention-anchor "for the push" --mention-name "Ada Lovelace" --debug --no-ai`
-- One‑shot feed actions:
-  - Like first post: `python main.py --debug --like-first`
-  - Comment first post: `python main.py --debug --comment-first "Nice take!"`
-  - Auto‑mention author in one‑shot comment: add `--mention-author --author-mention-position prepend|append`
-- Engage stream (comment only, author mention appended):
-  - `python main.py --debug --engage-stream comment --stream-comment "Great point!" --mention-author --author-mention-position append`
-- Engage stream (both, infinite until Ctrl+C):
-  - `python main.py --debug --engage-stream both --stream-comment "Great point!" --mention-author --infinite`
+## Commands (copy/paste)
 
-Global tips:
-- For first runs, set `HEADLESS=false` in env or omit `--headless` to watch the flow.
-- Use `--delay-min/--delay-max` for human‑like pacing and `--scroll-wait-min/--scroll-wait-max` on slow networks.
- 
-### Post with images
+Posting
+- Post exact text (no AI):
+  - `HEADLESS=false python main.py --debug --no-ai --post-text "Hello LinkedIn!"`
+- Post with images:
+  - Multiple files: `... --image ./img/1.jpg --image ./img/2.jpg --image ./img/3.jpg`
+  - From folder (auto‑pick up to 3): `... --images-dir ./img`
+- Post with AI (topics file):
+  - `HEADLESS=false python main.py --debug --topics-file Topics.txt --images-dir ./img`
+- Schedule a post (composer only):
+  - `HEADLESS=false python main.py --debug --post-text "See you tomorrow" --schedule-date 09/16/2025 --schedule-time "10:45 AM"`
+
+Mentions
+- Inline token in text: `--post-text "Thanks @{Ada Lovelace}!"`
+- Anchor + name pair: `--post-text "Thanks for the push" --mention-anchor "for the push" --mention-name "Ada Lovelace"`
+
+Repost (first post in feed)
+- With thoughts (and author mention appended):
+  - `HEADLESS=false python main.py --debug --repost-first --repost-thoughts "My take 👇" --mention-author --author-mention-position append`
+
+One‑shot feed actions (first visible post)
+- Like: `python main.py --debug --like-first`
+- Comment: `python main.py --debug --comment-first "Nice take!"` (add `--mention-author` if you want)
+
+Engage stream (scroll & act on many)
+- Comment stream: `HEADLESS=false python main.py --debug --engage-stream comment --stream-comment "Great point!" --mention-author --max-actions 12`
+- Like+Comment stream: add `--engage-stream both`
+- Infinite: add `--infinite` to run until Ctrl+C
+- Useful pacing: `--delay-min/--delay-max` and `--scroll-wait-min/--scroll-wait-max`
+
+---
+
+## Options (most useful)
+
+- Posting: `--post-text`, `--topics-file`, `--no-ai`, `--image` (repeat), `--images-dir`, `--no-images`
+- Mentions: inline `@{Name}`; anchors `--mention-anchor` + `--mention-name`; auto‑author: `--mention-author --author-mention-position prepend|append`
+- Repost: `--repost-first --repost-thoughts "..."` (+ mention options)
+- One‑shot feed: `--like-first`, `--comment-first "..."`
+- Stream: `--engage-stream like|comment|both`, `--stream-comment "..."`, `--max-actions N`, `--infinite`, `--include-promoted`, `--delay-min`, `--delay-max`, `--scroll-wait-min`, `--scroll-wait-max`
+- General: `--debug`, `--headless`
+
+---
+
+## Notes
+
+- Logs: `logs/linkedin_bot_<timestamp>.log` (look for ENGAGE_KEYS, ENGAGE_SKIP, SCROLL_*, COMMENT_ORDER, MENTIONS_*).
+- Duplicates: the stream avoids re‑commenting (stable IDs, text hashes, on‑page markers, 7‑day cache in `logs/engage_state.json`). Delete that file to reset.
+- Mentions: if the pop‑up doesn’t appear, the bot inserts a plain `@name` so your text still reads well.
+- Scheduling: date is `mm/dd/yyyy`; time like `10:45 AM`. The composer will show Schedule instead of Post.
+
+---
+
+## Safety
+
+Use responsibly and follow LinkedIn’s Terms. Start headful (`HEADLESS=false`) and with `--debug` so you can see what happens.
+
+---
+
+## Posting with Images
  
 Place image files under a directory (e.g., `static/`) and run:
  
@@ -127,23 +123,17 @@ python main.py --post-text "Look at these!" \
   --headless --debug --no-ai
 ```
 
-Notes:
+Notes
 - Supported formats: `.png`, `.jpg`, `.jpeg`, `.gif`.
-- If both `--image` and `--images-dir` are provided, `--image` takes precedence for direct posts.
+- If you pass both `--image` and `--images-dir`, the explicit `--image` files win.
 
-Multiple images:
-- Provide `--image` multiple times:
-  - `python main.py --post-text "Launching today!" --image ./static/1.jpg --image ./static/2.jpg --image ./static/3.jpg --debug --no-ai`
-- Or use a folder and let the bot pick up to 3 randomly:
-  - `python main.py --post-text "Launching today!" --images-dir ./static --debug --no-ai`
-
-### How image uploads work (no OS dialog)
+How image uploads work (no OS dialog)
 
 - The bot clicks the composer’s “Add media” button, then locates the hidden `input[type=file]` inside the media tray (e.g., `#media-editor-file-selector__file-input`).
 - It sends your file paths directly to that input via Selenium, avoiding the native OS file picker.
 - Upload is considered successful when a media preview thumbnail is detected; some UIs show an extra step (Next/Done) which the bot clicks automatically.
 
-Example (mentions + image):
+Example (mentions + one image):
 
 ```bash
 HEADLESS=false python main.py --debug --no-ai \
@@ -151,12 +141,14 @@ HEADLESS=false python main.py --debug --no-ai \
   --image ./static/justin_welsh.jpeg
 ```
 
-Troubleshooting uploads:
-- Prefer a visible browser (`HEADLESS=false`) for the first run to confirm UI flow.
-- Check the log for lines like “Found photo button …”, “Found file input …”, and “Detected uploaded media preview …”.
-- If upload stalls, LinkedIn may have tweaked selectors. Run the recorder (`python recorder/recorder.py`) and open a post with media to refresh selectors.
+ Troubleshooting
+ - Prefer a visible browser (`HEADLESS=false`) for the first run to confirm UI flow.
+ - Check the log for lines like “Found photo button …”, “Found file input …”, and “Detected uploaded media preview …”.
+ - If upload stalls, LinkedIn may have tweaked selectors. Re‑run headful with `--debug` and share the log.
 
-### Tag people (mentions)
+---
+
+## Tag People (Mentions)
 
 You can tag people in a post by using the low‑level API directly. Example:
 
@@ -186,13 +178,22 @@ text = "Huge thanks to @{Ada Lovelace} and @{Grace Hopper} for their insights!"
 li.post_to_linkedin(text, image_paths=None)
 ```
 
-Rules:
-- Use `@{Display Name}` to place a mention at that exact position.
-- Your own spaces/punctuation are preserved. If suggestions don’t appear, the bot falls back to literal `@name`.
-- The engine nudges the editor (space+backspace) and waits up to ~8s for suggestions; it prefers the top item and verifies a real entity was inserted.
-- Names containing emoji or non‑BMP characters are sanitized while typing to avoid driver errors.
+Two easy ways
+- Inline tokens: Put `@{Ada Lovelace}` right in your text. The bot types `@Ada Lovelace`, waits for the pop‑up, and picks the top match.
+- Anchor + name pairs: You tell the bot “after these words, put this mention”.
 
-### Like and Comment (Feed)
+Rules
+- Use `@{Display Name}` to place a mention exactly there in your text.
+- Or provide pairs:
+  - `--mention-anchor "for the push" --mention-name "Ada Lovelace"`
+  - The mention goes right after the first time the anchor appears.
+- You can auto‑mention the author when commenting or reposting with `--mention-author` and choose where it goes with `--author-mention-position prepend|append`.
+- If LinkedIn doesn’t show suggestions, the bot falls back to a plain `@name` so your text still looks right.
+- Names with emoji are sanitized so typing never crashes.
+
+---
+
+## Like and Comment (Feed)
 
 One‑shot helpers:
 
@@ -203,7 +204,7 @@ One‑shot helpers:
 - Repost first post (with thoughts):
   - `python main.py --debug --repost-first --repost-thoughts "My take on this 👇" --mention-author --author-mention-position append`
 
-Engage stream (MVP):
+Engage stream
 
 ```bash
 # Like 12 posts (default max-actions)
@@ -226,12 +227,12 @@ python main.py --debug --engage-stream comment \
   --infinite
 ```
 
-Options:
+Helpful options
 - `--max-actions N` (default 12)
 - `--infinite` (ignore max-actions and continue until Ctrl+C)
 - `--include-promoted` (skip by default)
 - `--delay-min/--delay-max` human‑like delays
-- `--scroll-wait-min/--scroll-wait-max`: wait window after scrolls; increase for slow networks
+- `--scroll-wait-min/--scroll-wait-max` wait window after scrolls (increase on slow networks)
 
 Commenting behavior:
 - Order is comment‑then‑like. In `comment` mode a courtesy Like is added but not counted.
@@ -243,7 +244,9 @@ De‑dupe & reliability:
 - It checks the Like button state to avoid re‑liking.
 - Each target post is scrolled into view before clicking to reduce flaky misses.
 
-### Direct CLI post text + anchors for tagging
+---
+
+## Direct CLI Post Text + Anchors for Tagging
 
 You can post a specific text via CLI and tell the bot where to insert tags by providing the three words that appear immediately before the tag location (the “anchor”). The bot converts anchors to inline mentions under the hood.
 
@@ -272,39 +275,9 @@ Notes:
 - Order matters: the first `--mention-anchor` pairs with the first `--mention-name`, etc.
 - If an anchor is not found in the text, the bot logs a note and skips that tag.
 
-## Recorder (Headful)
+---
 
-If LinkedIn’s UI changes, run the recorder to capture fresh selectors:
-
-```bash
-# Default (no screenshots)
-python recorder/recorder.py
-
-# With screenshots enabled
-RECORDER_TAKE_SCREENSHOTS=true python recorder/recorder.py
-```
-
-It opens a visible browser. Manually log in, start a post, add text, upload media, and post. Results are saved under `recorder/output/<timestamp>/`:
-- `recorder.log` (session log)
-- `linkedin_interactions_<ts>.json` (interactions)
-- `linkedin_recorder_report_<ts>.txt` (summary selectors for start‑post, editor, media, file input, and post/share button)
-- `linkedin_dom_snapshot_<ts>.json` (DOM snapshot; may be missing if window is already closed)
-
-## Typeahead (Mentions) Capture
-
-When typing an @mention, LinkedIn shows a suggestion popover (often under a container like `editor-typeahead-fetch`). To help investigate and adjust selectors, you can capture the suggestion HTML and a parsed list of visible items while posting.
-
-- Enable via env:
-
-  ```bash
-  CAPTURE_TYPEAHEAD_HTML=true python main.py --headless --debug --no-ai --post-text "Thanks @{Ada Lovelace}!"
-  ```
-
-- Outputs are saved under `logs/typeahead/` as `typeahead_<timestamp>[_<typed>].html` and a companion JSON with the visible item texts and attributes.
-
-Config:
-- `CAPTURE_TYPEAHEAD_HTML` (default: `false`): Turn on snapshots.
-- `TYPEAHEAD_CAPTURE_DIR` (default: `logs/typeahead`): Override output folder.
+ 
 
 ## Environment & Config Reference
 
@@ -316,8 +289,7 @@ Optional env:
 - `HEADLESS=true|false`: Default browser headless mode (CLI `--headless` overrides).
 - `USE_GEMINI=true|false`: Toggle AI generation globally (CLI `--no-ai` overrides).
 - `CUSTOM_POSTS_FILE=CustomPosts.txt`: Local templates for fallback content.
-- `CAPTURE_TYPEAHEAD_HTML=true`: Save typeahead HTML/JSON under `logs/typeahead`.
-- `TYPEAHEAD_CAPTURE_DIR=...`: Override capture folder.
+ 
 
 Runtime flags (selected):
 - Posting: `--topics-file`, `--post-text`, `--no-ai`, `--images-dir`, `--image`, `--no-images`.
@@ -331,7 +303,9 @@ Logs:
 - Engage diagnostics include: `ENGAGE_HARDENED`, `ENGAGE_KEYS`, `ENGAGE_SKIP`, `COMMENT_ORDER`, `SCROLL*`, and `MENTIONS_*` lines.
 - Engage de‑dupe cache: `logs/engage_state.json` (7‑day TTL). Delete to reset history.
 
-## Notes
+---
+
+## Notes & Safety
 
 - Run responsibly and follow LinkedIn’s Terms of Service.
 - Add natural delays and avoid aggressive posting to reduce risk.
@@ -339,7 +313,9 @@ Logs:
 - If the AI API is unavailable or returns no content, the bot now falls back to local generation: it first tries your `CUSTOM_POSTS_FILE` templates (supports `{topic}`), then builds a randomized post from phrase sets.
 - Dev note: the LinkedIn interaction code is now modular under `linkedin_ui/` (base, login, overlays, mentions, media, verify, composer), with a shim at `linkedin_interaction.py` for backwards imports.
 
-## Project Status
+---
+
+## Project Status (What’s working now)
 
 Where we are now (feed engage MVP)
 - Supports one‑shot like/comment on the first post and a stream mode to like/comment multiple posts (`--engage-stream`).
@@ -347,7 +323,7 @@ Where we are now (feed engage MVP)
 - Commenting can auto‑tag the post author (`--mention-author`) or tag specific people using inline tokens like `@{Ada Lovelace}`. Mention placement respects `--author-mention-position prepend|append`.
 - Image uploads work headfully or headless without opening the OS picker (sends file paths to the hidden input).
 
-Hardening (duplicates + comment order)
+Hardening (avoids duplicates + respects comment order)
 - Stream comment order: in `--engage-stream both`, the bot now comments first, then likes. In `--engage-stream comment`, it adds a courtesy Like after commenting (not counted as an action).
 - De‑duplication: the stream avoids re‑commenting the same post using multiple guards: URN detection, `div[data-id]` anchor, a text‑hash of actor + content, a DOM marker per post root, and a persisted cache of commented URNs (7‑day TTL) saved to `logs/engage_state.json`.
 - Existing comment detection: before commenting, the stream checks for an existing “You” comment and for a similar snippet of the intended comment text under that post.
@@ -376,7 +352,7 @@ Troubleshooting duplicates (engage stream)
 How to help reproduce locally
 - Run headful with debug and a small cap:
   - `HEADLESS=false python main.py --debug --engage-stream both --stream-comment "Quick test—thanks!" --mention-author --max-actions 3`
-- Share the log and (if possible) a DOM snippet of the post header/author area. The recorder can also capture selectors when UIs shift.
+- Share the log and (if possible) a DOM snippet of the post header/author area.
 
 What’s next (once stable)
 - Repost support (one‑shot + stream): click the “Repost” button, optionally attach a note, and share.
