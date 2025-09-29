@@ -76,7 +76,14 @@ class MentionsMixin:
                 return False
         return True
 
-    def _insert_mentions(self, post_area, names, leading_space=True, force_end=False):
+    def _insert_mentions(
+        self,
+        post_area,
+        names,
+        leading_space=True,
+        force_end: bool = False,
+        force_start: bool = False,
+    ):
         if not names:
             return
         try:
@@ -85,6 +92,12 @@ class MentionsMixin:
         except Exception:
             pass
         # Ensure caret at end if requested
+        if force_start:
+            try:
+                self._move_caret_to_start(post_area)
+                self.random_delay(0.1, 0.2)
+            except Exception:
+                pass
         if force_end:
             try:
                 self._move_caret_to_end(post_area)

@@ -7,3 +7,6 @@ beautifulsoup4
 scrapy
 scrapy-selenium
 scrapy-playwright
+openai>=1.0.0
+sumy>=0.11.0
+nltk>=3.8.1
