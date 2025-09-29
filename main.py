@@ -155,6 +155,30 @@ def setup_argument_parser():
         help="Comment text to use when --engage-stream is 'comment' or 'both'."
     )
     parser.add_argument(
+        "--stream-ai",
+        action="store_true",
+        help="Generate comments with AI using the post text."
+    )
+    parser.add_argument(
+        "--stream-perspective",
+        action="append",
+        choices=["funny", "motivational", "insightful", "perspective"],
+        default="insightful",
+        help="Perspective for AI comments (repeat to provide multiple).",
+    )
+    parser.add_argument(
+        "--stream-ai-temperature",
+        type=float,
+        default=0.7,
+        help="Temperature to use when generating AI comments."
+    )
+    parser.add_argument(
+        "--stream-ai-max-tokens",
+        type=int,
+        default=180,
+        help="Maximum tokens for AI-generated comments."
+    )
+    parser.add_argument(
         "--max-actions",
         type=int,
         default=12,
@@ -289,10 +313,31 @@ def main():
 
         # Engage stream: like/comment/both continuously up to max-actions
         if args.engage_stream:
-            if args.engage_stream in ("comment", "both") and not (args.stream_comment and args.stream_comment.strip()):
+            if args.stream_ai and not bot.openai_client:
+                logging.error("AI commenting requested but OpenAI is not configured (missing API key).")
+                bot.close()
+                return 1
+
+            mention_author = args.mention_author
+            mention_position = args.author_mention_position
+
+            if args.stream_ai:
+                mention_author = True
+                mention_position = "prepend"
+
+            if (
+                args.engage_stream in ("comment", "both")
+                and not args.stream_ai
+                and not (args.stream_comment and args.stream_comment.strip())
+            ):
                 logging.error("--stream-comment is required for engage-stream 'comment' or 'both'")
                 bot.close()
                 return 1
+
+            perspectives = [] if args.stream_perspective is None else list(args.stream_perspective)
+            if perspectives:
+                perspectives = ["insightful" if p == "perspective" else p for p in perspectives]
+
             ok = bot.linkedin.engage_stream(
                 mode=args.engage_stream,
                 comment_text=args.stream_comment,
@@ -300,11 +345,16 @@ def main():
                 include_promoted=args.include_promoted,
                 delay_min=args.delay_min,
                 delay_max=args.delay_max,
-                mention_author=args.mention_author,
-                mention_position=args.author_mention_position,
+                mention_author=mention_author,
+                mention_position=mention_position,
                 infinite=args.infinite,
                 scroll_wait_min=args.scroll_wait_min,
                 scroll_wait_max=args.scroll_wait_max,
+                ai_client=bot.openai_client if args.stream_ai else None,
+                ai_perspectives=perspectives or None,
+                ai_temperature=args.stream_ai_temperature,
+                ai_max_tokens=args.stream_ai_max_tokens,
+                post_extractor=bot.post_extractor,
             )
             bot.close()
             return 0 if ok else 1
