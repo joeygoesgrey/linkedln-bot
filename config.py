@@ -22,6 +22,10 @@ LINKEDIN_PASSWORD = os.getenv("LINKEDIN_PASSWORD")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 USE_GEMINI = os.getenv("USE_GEMINI", "true").lower() == "true"  # Allow disabling AI via flag/env
 
+# OpenAI settings (used for feed engagement commentary)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
 # Browser settings
 HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"  # Run browser in headless mode, can be overridden
 WINDOW_SIZE = (1920, 1080)  # Browser window size
@@ -51,6 +55,23 @@ CUSTOM_POSTS_FILE = os.getenv("CUSTOM_POSTS_FILE", "CustomPosts.txt")
 
 # Content limits
 MAX_POST_LENGTH = 1300
+ENABLE_TEXT_PREPROCESSING = os.getenv("ENABLE_TEXT_PREPROCESSING", "false").lower() == "true"
+SUMMARIZE_INPUT = os.getenv("SUMMARIZE_INPUT", "false").lower() == "true"
+
+def _safe_float(value: str | None, default: float) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+def _safe_int(value: str | None, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+SUMMARIZE_RATIO = _safe_float(os.getenv("SUMMARIZE_RATIO"), 0.3)
+MAX_INPUT_CHARS = _safe_int(os.getenv("MAX_INPUT_CHARS"), 3200)
 
 # Mentions/typeahead capture (investigation/debugging)
 # Why:
