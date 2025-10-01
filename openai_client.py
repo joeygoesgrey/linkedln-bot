@@ -6,7 +6,8 @@ with different perspectives and tones to make the content sound more natural and
 """
 
 import logging
-from typing import Literal
+from dataclasses import dataclass
+from typing import List, Literal, Optional
 from openai import OpenAI
 
 from config import OPENAI_API_KEY, OPENAI_MODEL
@@ -14,6 +15,20 @@ from text_utils import preprocess_for_ai
 
 # Initialize OpenAI client
 client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+
+
+@dataclass
+class ContentCalendarRequest:
+    niche: str
+    goal: str
+    audience: str
+    tone: str
+    content_types: List[str]
+    frequency: str
+    total_posts: int
+    hashtags: List[str]
+    inspiration: Optional[str] = None
+    personal_story: Optional[str] = None
 
 
 class OpenAIClient:
@@ -193,3 +208,63 @@ Comment:"""
         except Exception as e:
             logging.error(f"Error generating comment: {e}")
             return "Great post! Thanks for sharing."
+
+    def generate_content_calendar(self, request: ContentCalendarRequest) -> str:
+        """Generate a structured content calendar using OpenAI."""
+
+        if not self.client:
+            raise ValueError("OpenAI client not initialized. Please set OPENAI_API_KEY in .env")
+
+        content_types = ", ".join(request.content_types) if request.content_types else "a variety of formats"
+        hashtags = ", ".join(f"#{tag.lstrip('#')}" for tag in request.hashtags) if request.hashtags else "relevant hashtags"
+        inspiration = request.inspiration or ""
+        personal_story = request.personal_story or ""
+
+        inspiration_clause = (
+            f"- The user admires or draws inspiration from {inspiration}.\n" if inspiration else ""
+        )
+        personal_clause = (
+            f"- The user wants to weave in personal stories such as: {personal_story}.\n" if personal_story else ""
+        )
+
+        prompt = f"""
+I need help generating a {request.total_posts}-day content plan for the {request.niche} niche.
+The user wants to focus on {request.goal} and their target audience is {request.audience}.
+The content should be written in a {request.tone} tone. Posts should emphasise {content_types}.
+Please follow these guidelines:
+- Posting frequency: {request.frequency}
+- Use these hashtags or keywords throughout: {hashtags}
+{inspiration_clause}{personal_clause}
+Output {request.total_posts} unique post ideas. For each idea, produce a single line in the format:
+Day X | Hook | Content Description | Suggested CTA | Suggested hashtags
+Hooks should be catchy, descriptions concise (one to two sentences), CTA actionable, and hashtags relevant.
+Avoid duplicate ideas and keep the tone consistent with the brief.
+"""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are an expert LinkedIn content strategist who creates month-long content calendars "
+                            "with concise, actionable ideas."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.7,
+                max_tokens=min(max(request.total_posts * 80, 600), 3000),
+                top_p=0.9,
+                frequency_penalty=0.2,
+                presence_penalty=0.2,
+            )
+            calendar_text = response.choices[0].message.content.strip()
+            logging.info(
+                "Generated content calendar with %d characters", len(calendar_text)
+            )
+            return calendar_text
+        except Exception as exc:
+            logging.error(f"Error generating content calendar: {exc}")
+            raise

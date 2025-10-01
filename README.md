@@ -14,6 +14,7 @@ This Python project opens a real Chromium/Chrome browser, signs into LinkedIn, a
 - [9. Project Structure](#9-project-structure)
 - [10. Contributing](#10-contributing)
 - [11. Changelog Highlights](#11-changelog-highlights)
+- [12. License](#12-license)
 
 ---
 
@@ -44,6 +45,7 @@ Add `--headless=false` the first few runs so you can watch what’s happening. A
 | Attach images | Use `--image` (repeatable) or `--images-dir`; bot uploads via the hidden file input. |
 | Schedule | Pick date/time via `--schedule-date mm/dd/yyyy` and `--schedule-time "10:45 AM"`. |
 | Use/fallback AI | Use Gemini/OpenAI, your topic file, or local templates. Disable with `--no-ai`. |
+| Content calendar | `--generate-calendar` creates a 30-day plan (appends to topics file; supports overwrite and defaults when optional fields are skipped). |
 | Mentions | Inline `@{Ada Lovelace}`, anchor/name pairs, or auto-tag author (`--mention-author`). |
 | Feed one-shots | Like/comment/repost the first visible feed item. |
 | Engage stream | Scroll the feed, skip promos, like/comment repeatedly (`--engage-stream`). |
@@ -135,6 +137,30 @@ python main.py \
   --author-mention-position append
 ```
 
+### Generate a 30-day content calendar
+```bash
+python main.py \
+  --generate-calendar \
+  --calendar-niche "fitness" \
+  --calendar-goal "educate busy professionals about at-home fitness" \
+  --calendar-audience "busy professionals aged 25-40 who struggle to find workout time" \
+  --calendar-tone inspirational \
+  --calendar-content-type "educational tips" \
+  --calendar-content-type "motivational stories" \
+  --calendar-frequency "daily posts" \
+  --calendar-hashtag "FitnessMotivation" \
+  --calendar-hashtag "HomeWorkout" \
+  --calendar-inspiration "Kayla Itsines, Chris Hemsworth" \
+  --calendar-personal-story "How fitness improved the founder's mental health" \
+  --calendar-output Topics.txt \
+  --calendar-overwrite
+```
+
+- Required flags: `--calendar-niche`, `--calendar-goal`, `--calendar-audience`.
+- Optional flags let you tailor tone, content formats, frequency, total posts, hashtags, inspirational accounts, and personal stories. If you skip them the generator falls back to neutral defaults (e.g., “a variety of formats”, “relevant hashtags”).
+- By default the plan appends to `--topics-file`; use `--calendar-output` to choose another file and `--calendar-overwrite` to replace existing content.
+- Each idea is written on its own line so you can feed it back into the posting workflow later.
+
 ### Engage stream (AI-powered)
 ```bash
 python main.py \
@@ -165,6 +191,7 @@ These confirm the summary and mention steps succeeded.
 - **Skip logic**: checks for prior likes, existing “You” comments, and similar comment text before posting.
 - **Promoted posts**: skipped unless `--include-promoted`.
 - **Mentions**: author mention is forced to the caret start when using AI, ensuring LinkedIn’s typeahead picks the first suggestion. If typeahead fails, the bot leaves a plain `@name` so text still reads naturally.
+- **Topic history**: successfully posted topics are removed from the source file and appended (with timestamps) to `<topics>_posted.<ext>` so you always know what has gone out.
 
 Troubleshooting duplicates:
 1. Run headful with `--debug` and a small cap.
@@ -228,9 +255,18 @@ Reset the engage cache by deleting `logs/engage_state.json`.
 
 ## 10. Contributing
 
-1. Reproduce the issue headfully with `--debug`.
-2. Attach logs/snippets showing the failure (e.g., `ENGAGE_KEYS`, `MENTIONS_SELECT`).
-3. Submit a pull request with selector updates or new features. Ideas welcome: reaction types, comment rotators, author filters, advanced rate limiting.
+We welcome fixes, docs improvements, and new features. Before you start, read
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for the full workflow:
+
+1. Reproduce the issue headfully with `--debug` and grab logs from
+   `logs/linkedin_bot_<timestamp>.log`.
+2. Open an issue describing the problem or proposal.
+3. Submit a focused pull request that includes tests or manual verification,
+   and update the README/help text if behaviour changes.
+
+All contributors must follow the [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md).
+Security-sensitive findings should be reported privately (see
+[`SECURITY.md`](SECURITY.md)).
 
 ---
 
@@ -241,5 +277,14 @@ Reset the engage cache by deleting `logs/engage_state.json`.
 - Hardened engage stream (comment-first, dedupe per URN/text hash, session cache).
 - Restored mention reliability by reintroducing author extraction and caret control.
 - Added CLI scheduling, explicit image attachment, and safety diagnostics (`SCROLL_*`, `ENGAGE_SKIP`).
+
+---
+
+## 12. License
+
+This project is released under the [LinkedIn Bot Community License](LICENSE.md).
+Personal, educational, and research use is free. Commercial deployments require
+obtaining a written agreement with the original author, including offering the
+author the first right of refusal for paid work on the commercial product.
 
 Stay safe, automate responsibly, and enjoy reclaiming your time on LinkedIn!

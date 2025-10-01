@@ -13,6 +13,7 @@ import json
 import time
 import random
 import logging
+from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
@@ -275,13 +276,23 @@ class LinkedInBot:
 
     def _update_topics_file(self, file_path: str, topics: List[str], posted_topic: str) -> None:
         """
-        Update the topics file by removing the posted topic.
+        Update the topics file by removing the posted topic and recording it in a history log.
         """
         try:
             topics.remove(posted_topic)
-            with open(file_path, "w") as f:
-                f.write("\n".join(topics))
+            path = Path(file_path)
+            path.write_text("\n".join(topics) + ("\n" if topics else ""), encoding="utf-8")
             logging.info(f"Updated topics file. {len(topics)} topics remaining.")
+
+            stem = path.stem or "topics"
+            suffix = path.suffix or ".txt"
+            history_path = path.with_name(f"{stem}_posted{suffix}")
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with history_path.open("a", encoding="utf-8") as history_file:
+                history_file.write(f"{timestamp} | {posted_topic}\n")
+            logging.info("Recorded posted topic in %s", history_path)
+        except ValueError:
+            logging.warning("Posted topic '%s' not found in %s", posted_topic, file_path)
         except Exception as e:
             logging.error(f"Error updating topics file: {e}")
 
