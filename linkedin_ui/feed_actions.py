@@ -24,7 +24,33 @@ import config
 
 
 class FeedActionsMixin:
+    """Provide one-off like/comment/repost helpers for the feed.
+
+    Why:
+        Support CLI shortcuts and testing scenarios without invoking the full engage stream.
+
+    When:
+        Mixed into :class:`LinkedInInteraction` to support quick feed actions.
+
+    How:
+        Offers methods that navigate to the feed, locate the first post, and perform targeted social actions.
+    """
     def _goto_feed(self):
+        """Navigate to the home feed and clear obstructive overlays.
+
+        Why:
+            Feed actions require being on the main feed with minimal obstructions.
+
+        When:
+            Called at the start of like, comment, and repost helpers.
+
+        How:
+            Loads the feed URL, waits for load delays, and dismisses overlays if
+            present.
+
+        Returns:
+            None
+        """
         try:
             self.driver.get(config.LINKEDIN_FEED_URL)
         except Exception:
@@ -36,7 +62,21 @@ class FeedActionsMixin:
             pass
 
     def _first_action_bar(self):
-        """Locate the first post's social action bar element."""
+        """Locate the social action bar for the top-most feed post.
+
+        Why:
+            Feed actions (like/comment/repost) need this element to find buttons.
+
+        When:
+            Immediately after navigating to the feed before performing actions.
+
+        How:
+            Iterates through XPath selectors targeting the first visible action
+            bar and returns the first match.
+
+        Returns:
+            WebElement | None: Action bar element if found, else ``None``.
+        """
         candidates = [
             "(//div[contains(@class,'feed-shared-social-action-bar')])[1]",
             "(//div[contains(@class,'update-v2-social-activity')]//div[contains(@class,'social-action')])[1]",
@@ -52,11 +92,21 @@ class FeedActionsMixin:
         return None
 
     def like_first_post(self):
-        """
-        Like the first visible post in the feed.
+        """Like the first visible post in the feed if not already liked.
+
+        Why:
+            Provides a quick engagement action for CLI shortcuts.
+
+        When:
+            Triggered by the `--like-first` flag.
+
+        How:
+            Navigates to the feed, locates the first action bar, finds the like
+            button, and clicks it unless it is already pressed.
 
         Returns:
-            bool: True if a like was performed or already present.
+            bool: ``True`` when the like is applied or already present, ``False``
+            when the action bar or button cannot be found.
         """
         self._goto_feed()
         bar = self._first_action_bar()
@@ -97,14 +147,27 @@ class FeedActionsMixin:
         return True
 
     def comment_first_post(self, text, mention_author: bool = False, mention_position: str = 'append'):
-        """
-        Comment on the first visible post in the feed.
+        """Leave a comment on the first feed post, optionally mentioning the author.
+
+        Why:
+            Handy for quick engagement or smoke tests without running the full
+            engage stream.
+
+        When:
+            Triggered via the `--comment-first` CLI flag.
+
+        How:
+            Navigates to the feed, opens the comment editor, optionally inserts
+            mention tokens (inline or derived), types the comment, and submits
+            with fallbacks.
 
         Args:
-            text (str): The comment text to submit.
+            text (str): Comment content to submit.
+            mention_author (bool): Whether to add the author's mention token.
+            mention_position (str): Placement for the mention (`'prepend'` or `'append'`).
 
         Returns:
-            bool: True if the comment appears to have been submitted.
+            bool: ``True`` when submission appears to succeed, ``False`` otherwise.
         """
         if not isinstance(text, str) or not text.strip():
             logging.error("comment_first_post requires non-empty text")
@@ -227,14 +290,26 @@ class FeedActionsMixin:
         return posted
 
     def repost_first_post(self, thoughts_text: str, mention_author: bool = False, mention_position: str = 'append') -> bool:
-        """
-        Repost the first visible post with thoughts (and optional author mention).
+        """Share the first feed post with personalised thoughts.
 
-        Steps:
-        - Find first post's action bar and click Repost dropdown
-        - Choose 'Repost with your thoughts'
-        - Type thoughts text; optionally insert author mention at start/append
-        - Click Post/Share
+        Why:
+            Streamlines reposting with commentary for quick amplification.
+
+        When:
+            Invoked via the `--repost-first` flag.
+
+        How:
+            Navigates to the feed, opens the repost dropdown, selects "Repost
+            with your thoughts", types the supplied text (optionally inserting
+            an author mention), and submits the share.
+
+        Args:
+            thoughts_text (str): Commentary to accompany the repost.
+            mention_author (bool): Whether to mention the original author.
+            mention_position (str): Placement for the mention token.
+
+        Returns:
+            bool: ``True`` when the repost workflow appears successful, else ``False``.
         """
         if not isinstance(thoughts_text, str) or not thoughts_text.strip():
             logging.error("repost_first_post requires non-empty thoughts_text")
@@ -302,6 +377,25 @@ class FeedActionsMixin:
         ]
 
         def _find_option_in(container):
+            """Search a dropdown container for the repost-with-thoughts option.
+
+            Why:
+                The option may appear under various tags; abstracting the search
+                keeps the parent logic readable.
+
+            When:
+                Called after opening the repost dropdown for each candidate container.
+
+            How:
+                Iterates through common tags, checks visibility, normalises text,
+                and compares against known label variants.
+
+            Args:
+                container (WebElement): Dropdown container to inspect.
+
+            Returns:
+                WebElement | None: Matching option element if found.
+            """
             # Try common clickable tags first
             tag_sets = [
                 ".//button",

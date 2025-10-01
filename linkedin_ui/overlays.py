@@ -1,15 +1,15 @@
-"""
-Overlay dismissal and popover handling.
+"""Helpers for dismissing LinkedIn overlays that block automation flows.
 
 Why:
-    LinkedIn often shows chat bubbles, toasts, and modals that intercept clicks.
-    Centralize safe dismissal to reduce flakiness.
+    Chat bubbles, toasts, and modals regularly obscure key controls; removing
+    them proactively keeps interactions reliable.
 
 When:
-    Before clicking important controls (start post, Post button, etc.).
+    Mixed into :class:`LinkedInInteraction` and invoked before critical clicks.
 
 How:
-    Conservative JS and targeted selectors that avoid closing the composer.
+    Uses targeted selectors and conservative JavaScript to close overlays while
+    avoiding disruption of active composer modals.
 """
 
 import time
@@ -20,9 +20,38 @@ import config
 
 
 class OverlayMixin:
+    """Utilities for dismissing overlays that obstruct LinkedIn automation.
+
+    Why:
+        Keeps overlay handling logic in one place so other mixins can focus on their primary tasks.
+
+    When:
+        Mixed into :class:`LinkedInInteraction` and used before major UI interactions.
+
+    How:
+        Exposes methods to close chat bubbles, toasts, modals, and search overlays via Selenium and JavaScript fallbacks.
+    """
     def dismiss_overlays(self, preserve_share_modal=False):
-        """
-        Dismiss overlays that can block interactions (chat, toasts, drafts, etc.).
+        """Close common overlays that interfere with automation.
+
+        Why:
+            LinkedIn frequently surfaces chat bubbles, save-draft dialogs, and
+            toasts that intercept clicks.
+
+        When:
+            Called before interacting with controls that may be blocked by such
+            overlays.
+
+        How:
+            Attempts to close known overlay types via targeted selectors and JS,
+            optionally preserving the share modal when requested.
+
+        Args:
+            preserve_share_modal (bool): If ``True``, avoids dismissing the post
+                composer modal.
+
+        Returns:
+            None
         """
         try:
             self._dismiss_global_search_overlay()
@@ -164,8 +193,20 @@ class OverlayMixin:
                 logging.info(f"JavaScript modal removal unsuccessful: {e}")
 
     def _dismiss_global_search_overlay(self):
-        """
-        Hide the global header search typeahead if visible (non-destructive).
+        """Hide the global search typeahead when it obstructs interactions.
+
+        Why:
+            The global header popover can overlap the composer or comment box.
+
+        When:
+            Invoked as part of overlay dismissal before sensitive operations.
+
+        How:
+            Executes JavaScript to detect visible typeahead nodes and hide them
+            by tweaking style attributes.
+
+        Returns:
+            None
         """
         try:
             js_probe = """
@@ -209,4 +250,3 @@ class OverlayMixin:
             self.driver.execute_script(js_hide)
         except Exception:
             pass
-

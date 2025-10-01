@@ -1,14 +1,13 @@
-"""
-Post success verification helpers.
+"""Mix-in utilities for verifying post submission success.
 
 Why:
-    Confirm that a post was published by checking toasts and feed state.
+    Ensure automation detects failures promptly rather than assuming success.
 
 When:
-    After clicking Post from the composer.
+    Used after submitting a post or schedule action through the composer.
 
 How:
-    Looks for success toasts, disappearance of composer, and feed markers.
+    Checks for toasts, absence of modals, and presence of feed indicators.
 """
 
 import time
@@ -22,7 +21,37 @@ import config
 
 
 class VerifyMixin:
+    """Expose helpers to confirm post submission status.
+
+    Why:
+        Ensures automation can differentiate between success and silent failure.
+
+    When:
+        Mixed into :class:`LinkedInInteraction` and used after posting or scheduling actions.
+
+    How:
+        Provides :meth:`_verify_post_success` which inspects toasts, modal states, and feed snippets.
+    """
     def _verify_post_success(self, post_text):
+        """Inspect the UI to determine whether a post was successfully submitted.
+
+        Why:
+            Allows the automation to confirm success and log appropriate feedback.
+
+        When:
+            Called immediately after attempting to post or schedule content.
+
+        How:
+            Looks for success toasts, ensures the composer closes, and optionally
+            verifies the post snippet appears in the feed.
+
+        Args:
+            post_text (str): Original content to help identify feed entries.
+
+        Returns:
+            bool: ``True`` if success indicators appear, ``False`` otherwise.
+        """
+
         logging.info("Verifying post success...")
         time.sleep(3)
         success_indicators = [
@@ -80,4 +109,3 @@ class VerifyMixin:
         except Exception as e:
             logging.error(f"Unexpected error during post success verification: {e}")
             return False
-

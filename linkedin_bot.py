@@ -1,10 +1,19 @@
-"""
-Main controller module for the LinkedIn Bot.
+"""High-level controller for orchestrating LinkedIn automation workflows.
 
-This module serves as the main controller for the LinkedIn automation bot,
-integrating the driver, content generation, and LinkedIn interaction components.
-It processes topics from a file and posts content to LinkedIn, and can also
-engage with other posts by adding AI-generated comments.
+Why:
+    Provide a cohesive object that wires the browser driver, content
+    generation, AI helpers, and UI interaction mixins so callers interact with
+    a single abstraction.
+
+When:
+    Instantiated by CLI scripts or tests whenever posting content, scheduling,
+    or engaging with the feed is required.
+
+How:
+    Sets up Selenium via :class:`DriverFactory`, configures AI clients,
+    delegates UI operations to :class:`linkedin_ui.LinkedInInteraction`, and
+    exposes convenience methods for posting custom text, processing topic files,
+    and engaging with feed items.
 """
 
 import os
@@ -28,17 +37,42 @@ from linkedin_ui.post_extractor import PostExtractor
 
 
 class LinkedInBot:
-    """
-    Main controller class for the LinkedIn automation bot.
-    Integrates browser driver, content generation, and LinkedIn interaction components.
+    """Composite orchestrator that drives LinkedIn automation flows.
+
+    Why:
+        Aggregate driver management, content generation, and UI interactions so
+        upstream callers focus on workflow intent rather than wiring.
+
+    When:
+        Create once per CLI invocation or integration test to handle posting or
+        engagement tasks; the instance remains valid until :meth:`close` runs.
+
+    How:
+        Initialises Selenium via :class:`DriverFactory`, loads AI helpers, wraps
+        the UI mixins through :class:`LinkedInInteraction`, and exposes helper
+        methods that chain these subsystems together.
     """
 
     def __init__(self, use_openai: bool = True) -> None:
-        """
-        Initialize the LinkedIn Bot with necessary components.
-        
+        """Instantiate the bot and log into LinkedIn immediately.
+
+        Why:
+            Many workflows assume an authenticated session; logging in upfront
+            reduces surprise and simplifies later method implementations.
+
+        When:
+            Called whenever a new automation run is needed. A fresh instance is
+            recommended per run to avoid stale browser state.
+
+        How:
+            Spins up a Selenium driver via :class:`DriverFactory`, prepares
+            :class:`ContentGenerator` and optionally :class:`OpenAIClient`, then
+            constructs :class:`LinkedInInteraction` and :class:`PostExtractor`
+            before invoking :meth:`LinkedInInteraction.login`.
+
         Args:
-            use_openai: Whether to use OpenAI for content generation (default: True).
+            use_openai (bool): Toggle for initialising the OpenAI client; useful
+                for offline or no-AI scenarios.
         """
         self.driver = DriverFactory.setup_driver()
         self.content_generator = ContentGenerator()
@@ -50,14 +84,26 @@ class LinkedInBot:
         self.linkedin.login()
 
     def _get_random_perspective(self, perspectives: List[str]) -> str:
-        """
-        Get a random perspective from the available options.
-        
+        """Select a perspective token for AI comment generation.
+
+        Why:
+            Ensures the engage stream rotates through varied tones (funny,
+            motivational, insightful) without duplicating logic across call
+            sites.
+
+        When:
+            Used internally when constructing AI prompts for engagement flows.
+
+        How:
+            Normalises the input list, replaces ``"random"`` with the default
+            pool, and returns a random choice.
+
         Args:
-            perspectives: List of perspective options, can include 'random'.
-            
+            perspectives (list[str]): Candidate perspective labels, possibly
+                including ``"random"``.
+
         Returns:
-            str: A random perspective from the standard options.
+            str: A concrete perspective ready for prompt building.
         """
         standard_perspectives = ["funny", "motivational", "insightful"]
 
@@ -80,12 +126,37 @@ class LinkedInBot:
         max_posts_to_engage: int = 3,
         perspectives: Optional[List[str]] = None
     ) -> Dict[str, Any]:
-        """
-        Processes topics from a text file, generates content, and posts to LinkedIn.
-        Optionally engages with other posts by adding AI-generated comments.
-        
+        """Publish a post sourced from a topics file and optionally engage feed posts.
+
+        Why:
+            Automates daily posting by drawing from a backlog of ideas while also
+            kicking off lightweight engagement to boost reach.
+
+        When:
+            Triggered by the default CLI flow or schedulers that process topic
+            queues at regular intervals.
+
+        How:
+            Loads topics (falling back to defaults), generates content via
+            :class:`ContentGenerator`, selects media, posts via
+            :class:`LinkedInInteraction`, optionally runs the engage stream, and
+            trims the processed topic from the source file.
+
+        Args:
+            topic_file_path (str | None): Path to a newline-delimited topic file
+                or ``None`` to use built-in templates.
+            image_directory (str | None): Folder containing candidate images.
+            schedule_date (str | None): Optional date string for scheduled posts.
+            schedule_time (str | None): Optional time string for scheduled posts.
+            engage_with_feed (bool): Whether to follow up with feed engagement.
+            max_posts_to_engage (int): Maximum feed items to touch during
+                engagement.
+            perspectives (list[str] | None): Preferred AI perspectives for
+                comments if engagement is enabled.
+
         Returns:
-            Dict containing results of the operation, including post and engagement stats.
+            dict: Outcome metadata including posting success and engagement
+            stats.
         """
         if perspectives is None:
             perspectives = ["funny", "motivational", "insightful"]
@@ -187,8 +258,33 @@ class LinkedInBot:
         schedule_date: Optional[str] = None, 
         schedule_time: Optional[str] = None
     ) -> bool:
-        """
-        Post custom text with optional images and mentions.
+        """Publish a caller-supplied post with optional media and mentions.
+
+        Why:
+            Supports ad-hoc messaging outside the topic workflow while reusing
+            the same resilient Selenium interactions.
+
+        When:
+            Used by CLI `--post-text` runs or tests wanting deterministic
+            content.
+
+        How:
+            Validates input, injects inline mention placeholders, gathers media
+            (explicit paths first, then directory sampling), ensures login, and
+            delegates posting to :meth:`LinkedInInteraction.post_to_linkedin`.
+
+        Args:
+            post_text (str): Content to publish.
+            image_directory (str | None): Folder to sample images from when
+                ``image_paths`` is empty.
+            mention_anchors (list[str] | None): Text anchors preceding mentions.
+            mention_names (list[str] | None): Display names matching anchors.
+            image_paths (list[str] | None): Explicit file paths to attach.
+            schedule_date (str | None): Optional scheduling date.
+            schedule_time (str | None): Optional scheduling time.
+
+        Returns:
+            bool: ``True`` on apparent success, ``False`` otherwise.
         """
         try:
             if not isinstance(post_text, str) or not post_text.strip():
@@ -218,8 +314,28 @@ class LinkedInBot:
             return False
 
     def _apply_anchor_mentions(self, post_text: str, anchors: Optional[List[str]], names: Optional[List[str]]) -> str:
-        """
-        Insert inline mention placeholders based on (anchor, name) pairs.
+        """Inject ``@{Name}`` tokens after configured anchor phrases.
+
+        Why:
+            Allow users to specify where mentions belong without manually
+            crafting placeholders.
+
+        When:
+            Called before composing text if `mention_anchors` and
+            `mention_names` are provided.
+
+        How:
+            Iterates through provided anchor/name pairs, constructs regex
+            patterns that respect word boundaries, and substitutes the first
+            occurrence with an embedded ``@{name}`` token.
+
+        Args:
+            post_text (str): Original content.
+            anchors (list[str] | None): Anchor phrases preceding a mention.
+            names (list[str] | None): Corresponding display names.
+
+        Returns:
+            str: Post text with inline mention placeholders applied.
         """
         try:
             if not anchors or not names or len(anchors) != len(names):
@@ -248,8 +364,25 @@ class LinkedInBot:
             return post_text
 
     def _select_images(self, image_directory: Optional[str]) -> List[str]:
-        """
-        Select random images from the provided directory.
+        """Pick up to three random images from a directory.
+
+        Why:
+            Avoid repetitive manual selection while still adding media variety to
+            posts sourced from topic files.
+
+        When:
+            Used when the caller supplies an image directory but no explicit
+            paths.
+
+        How:
+            Validates the directory, filters supported extensions, and samples
+            up to three unique files.
+
+        Args:
+            image_directory (str | None): Directory path to scan for images.
+
+        Returns:
+            list[str]: Absolute file paths suitable for Selenium uploads.
         """
         if not image_directory:
             return []
@@ -275,8 +408,27 @@ class LinkedInBot:
             return []
 
     def _update_topics_file(self, file_path: str, topics: List[str], posted_topic: str) -> None:
-        """
-        Update the topics file by removing the posted topic and recording it in a history log.
+        """Persist topic progress by removing the used idea and logging history.
+
+        Why:
+            Prevents reposting the same topic and keeps an audit trail of what
+            went live and when.
+
+        When:
+            Invoked after a successful post originating from a topics file.
+
+        How:
+            Removes the chosen topic from the in-memory list, rewrites the file
+            with remaining entries, and appends a timestamped record to a
+            `<topics>_posted` companion file.
+
+        Args:
+            file_path (str): Original topics file path.
+            topics (list[str]): Remaining topics.
+            posted_topic (str): Topic that was just published.
+
+        Returns:
+            None
         """
         try:
             topics.remove(posted_topic)
@@ -297,8 +449,20 @@ class LinkedInBot:
             logging.error(f"Error updating topics file: {e}")
 
     def close(self) -> None:
-        """
-        Clean up resources by closing the browser.
+        """Terminate the Selenium session and release resources.
+
+        Why:
+            Avoid lingering browser processes and free OS resources once work is
+            complete.
+
+        When:
+            Call after finishing posting or engagement workflows.
+
+        How:
+            Invokes :meth:`webdriver.Chrome.quit` and logs the outcome.
+
+        Returns:
+            None
         """
         try:
             self.driver.quit()

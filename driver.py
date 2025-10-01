@@ -1,8 +1,17 @@
-"""
-Browser driver setup module for the LinkedIn Bot.
+"""Resilient Selenium driver initialisation helpers for LinkedIn automation.
 
-This module handles browser initialization and setup across different operating systems,
-providing a robust way to create and configure the Selenium WebDriver.
+Why:
+    LinkedIn frequently tightens bot detection; abstracting driver setup allows
+    us to tweak launch strategies centrally.
+
+When:
+    Imported during bot instantiation to obtain a configured Chrome/Chromium
+    WebDriver capable of bypassing common detection heuristics.
+
+How:
+    Detects platform specifics, attempts multiple driver strategies (local
+    binaries, undetected-chromedriver, webdriver-manager), and returns a ready
+    driver instance.
 """
 
 import os
@@ -20,19 +29,44 @@ import config
 
 
 class DriverFactory:
-    """Factory class for creating and configuring WebDriver instances."""
+    """Factory utilities for provisioning Chrome-based Selenium drivers.
+
+    Why:
+        Encapsulate OS detection, binary discovery, and fallback strategies so
+        the rest of the codebase simply calls :meth:`setup_driver`.
+
+    When:
+        Invoked whenever a new automation session begins.
+
+    How:
+        Offers static helpers that search for browser binaries, configure
+        options, and cascade through multiple launch strategies until a driver
+        succeeds or all attempts fail.
+    """
 
     @staticmethod
     def setup_driver():
-        """
-        Sets up the browser driver with undetected-chromedriver which provides better
-        compatibility with different Chrome/Chromium versions and bypasses most
-        anti-bot detection mechanisms automatically. Includes fallback mechanisms for
-        ChromeDriver download issues. Works cross-platform on Windows, macOS, and Linux.
-        
+        """Provision a Selenium WebDriver resilient to LinkedIn bot detection.
+
+        Why:
+            LinkedIn frequently changes detection heuristics; wrapping setup in
+            a single method allows us to tune the launch sequence quickly.
+
+        When:
+            Called during :class:`LinkedInBot` construction before any LinkedIn
+            page is accessed.
+
+        How:
+            Detects the host OS, resolves browser paths/versions, configures
+            undetected-chromedriver options, and sequentially tries local
+            chromedriver, undetected-chromedriver, and webdriver-manager
+            fallbacks, returning the first successful driver.
+
         Returns:
-            uc.Chrome: An undetected ChromeDriver instance compatible with
-                      the installed browser.
+            webdriver.Chrome: A configured Chrome or Chromium Selenium driver.
+
+        Raises:
+            Exception: Propagates when every initialisation strategy fails.
         """
         try:
             # Detect OS platform
@@ -62,7 +96,26 @@ class DriverFactory:
             
     @staticmethod
     def _get_platform_specific_paths(system):
-        """Get browser paths and version commands based on operating system."""
+        """Derive candidate browser binaries and version commands per OS.
+
+        Why:
+            Chrome/Chromium installs vary by platform; providing tailored search
+            paths improves the odds of finding the browser.
+
+        When:
+            Executed early in :meth:`setup_driver` prior to driver initialisation.
+
+        How:
+            Returns platform-specific tuples containing likely executable paths
+            and corresponding ``--version`` commands.
+
+        Args:
+            system (str): OS name from :func:`platform.system`.
+
+        Returns:
+            tuple[list[str], list[tuple[str, str]]]: Candidate paths and version
+            command pairs.
+        """
         if system == "Linux":
             browser_paths = ["/usr/bin/chromium", "/usr/bin/chrome", "/usr/bin/google-chrome"]
             version_commands = [("chromium", "--version"), ("google-chrome", "--version")]
@@ -88,7 +141,27 @@ class DriverFactory:
             
     @staticmethod
     def _detect_browser_version(version_commands):
-        """Detect browser version from command line."""
+        """Probe available browsers to retrieve a version string.
+
+        Why:
+            Some driver strategies need the installed browser version to select
+            matching binaries.
+
+        When:
+            Called from :meth:`setup_driver` after collecting platform-specific
+            commands.
+
+        How:
+            Iterates over command tuples, runs them via ``subprocess``, and
+            returns the first successful output.
+
+        Args:
+            version_commands (list[tuple[str, str]]): Command/argument pairs to
+                execute.
+
+        Returns:
+            str | None: Detected version string or ``None`` when detection fails.
+        """
         browser_version = None
         for cmd, arg in version_commands:
             try:
@@ -106,7 +179,25 @@ class DriverFactory:
     
     @staticmethod
     def _find_browser_path(browser_paths):
-        """Find the first existing browser path."""
+        """Locate the first existing browser executable from candidate paths.
+
+        Why:
+            Passing an explicit binary to Selenium improves reliability when
+            multiple versions coexist.
+
+        When:
+            Executed during driver setup after gathering OS-specific locations.
+
+        How:
+            Iterates over supplied paths and returns the first that exists on the
+            filesystem.
+
+        Args:
+            browser_paths (list[str]): Candidate absolute paths.
+
+        Returns:
+            str | None: Resolved path or ``None`` if none are present.
+        """
         browser_path = None
         for path in browser_paths:
             if os.path.exists(path):
@@ -117,7 +208,22 @@ class DriverFactory:
     
     @staticmethod
     def _configure_browser_options():
-        """Configure Chrome browser options."""
+        """Build Chrome options tuned for automation while mimicking humans.
+
+        Why:
+            Applying consistent arguments (headless toggles, window sizing,
+            custom UA) reduces flakiness and detection likelihood.
+
+        When:
+            Called before any driver initialisation strategy is attempted.
+
+        How:
+            Creates :class:`uc.ChromeOptions`, applies sandbox, headless, window,
+            and notification arguments based on config.
+
+        Returns:
+            uc.ChromeOptions: Options object ready for driver creation.
+        """
         options = uc.ChromeOptions()
         
         # Basic configuration
@@ -139,7 +245,31 @@ class DriverFactory:
     
     @staticmethod
     def _initialize_driver_with_fallbacks(browser_path, browser_version, options):
-        """Try multiple initialization strategies with fallbacks."""
+        """Attempt multiple driver launch strategies until one succeeds.
+
+        Why:
+            Different environments require different launch paths; chaining
+            fallbacks maximises success without manual intervention.
+
+        When:
+            Called from :meth:`setup_driver` after collecting platform details
+            and options.
+
+        How:
+            Tries local chromedriver, undetected-chromedriver (two variants),
+            and webdriver-manager, returning as soon as a driver initialises.
+
+        Args:
+            browser_path (str | None): Preferred browser binary path.
+            browser_version (str | None): Detected browser version string.
+            options (uc.ChromeOptions): Preconfigured options for launch.
+
+        Returns:
+            webdriver.Chrome: Successfully initialised driver instance.
+
+        Raises:
+            Exception: Propagated when all strategies fail.
+        """
 
         # 0) Prefer a locally installed chromedriver to avoid network
         local_driver_path = DriverFactory._find_local_chromedriver()
@@ -206,7 +336,22 @@ class DriverFactory:
 
     @staticmethod
     def _find_local_chromedriver():
-        """Locate a locally installed chromedriver binary if available."""
+        """Search common locations for an existing chromedriver binary.
+
+        Why:
+            Using a local binary avoids network downloads and speeds up start-up.
+
+        When:
+            Invoked prior to falling back to undetected-chromedriver or
+            webdriver-manager.
+
+        How:
+            Checks environment variables, PATH, and common installation paths
+            and returns the first binary discovered.
+
+        Returns:
+            str | None: Path to chromedriver or ``None`` when not found.
+        """
         # 1) Explicit env var
         for env_name in ("CHROMEDRIVER_PATH", "CHROMEWEBDRIVER", "WEBDRIVER_CHROME_DRIVER"):
             path = os.getenv(env_name)
