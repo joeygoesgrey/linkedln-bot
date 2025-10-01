@@ -207,6 +207,21 @@ Troubleshooting duplicates:
 - **Token billing**: everything you send (including spaces and line breaks) counts as tokens.
 - **Fallbacks**: if OpenAI/Gemini fail, the bot falls back to `CUSTOM_POSTS_FILE` templates, then to randomised phrases.
 
+### Documentation & Introspection
+
+- Every module, class, and function now ships with Why/When/How docstrings so you can `help()` anything in the stack and understand intent quickly.
+- Re-run the bot with `--debug` to see the enriched logging alongside the new structured docs if you are auditing behaviour.
+- Export docs into plain text with:
+  ```bash
+  python - <<'PY'
+  import inspect
+  from linkedin_bot import LinkedInBot
+
+  print(inspect.getdoc(LinkedInBot.post_custom_text))
+  PY
+  ```
+  The output mirrors the new docstring format (What/Why/When/How, Args, Returns), making it easy to embed in your own runbooks.
+
 ---
 
 ## 7. Configuration Reference
@@ -277,6 +292,7 @@ Security-sensitive findings should be reported privately (see
 - Hardened engage stream (comment-first, dedupe per URN/text hash, session cache).
 - Restored mention reliability by reintroducing author extraction and caret control.
 - Added CLI scheduling, explicit image attachment, and safety diagnostics (`SCROLL_*`, `ENGAGE_SKIP`).
+- Expanded docstrings across the entire codebase with Why/When/How context for every module, class, and function to streamline onboarding and maintenance.
 
 ---
 

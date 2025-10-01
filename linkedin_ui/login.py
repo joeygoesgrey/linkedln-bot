@@ -1,15 +1,16 @@
-"""
-Login flow for LinkedIn automation.
+"""Mix-in implementing LinkedIn sign-in flows with resilient selectors.
 
 Why:
-    Encapsulates the sign-in sequence with resilient selectors and checks.
+    Keep authentication logic isolated so the rest of the interaction mixins
+    assume an authenticated session.
 
 When:
-    At session start or whenever a new WebDriver is created.
+    Mixed into :class:`LinkedInInteraction` and invoked during bot start-up or
+    explicit re-login attempts.
 
 How:
-    Navigates to login, types credentials with human-like delays, and waits for
-    feed indicators while handling variations and redirects.
+    Navigates to login, handles pre-login redirects, types credentials with
+    human-like delays, and waits for feed indicators.
 """
 
 import logging
@@ -20,12 +21,35 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 class LoginMixin:
+    """Encapsulate LinkedIn authentication flows for reuse across workflows.
+
+    Why:
+        Keeps login-specific selectors and retries isolated from other mixins.
+
+    When:
+        Mixed into :class:`LinkedInInteraction` during bot initialisation or re-login attempts.
+
+    How:
+        Provides :meth:`login` which navigates, types credentials, and validates successful authentication.
+    """
     def login(self):
-        """
-        Log into LinkedIn with credentials from env.
+        """Authenticate the browser session using stored credentials.
+
+        Why:
+            Most downstream actions require an active LinkedIn session.
+
+        When:
+            Called during :class:`LinkedInBot` initialisation or when a session
+            appears expired.
+
+        How:
+            Opens LinkedIn, handles redirects to the login form, types
+            credentials with human delays, submits the form, and watches for feed
+            indicators or verification prompts.
 
         Returns:
-            bool: True on success.
+            bool: ``True`` on apparent success, ``False`` when credentials are
+            missing or additional verification is required.
         """
         try:
             self.driver.get(config.LINKEDIN_BASE_URL)

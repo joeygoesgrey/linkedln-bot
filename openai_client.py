@@ -1,8 +1,15 @@
-"""
-OpenAI client for generating human-like LinkedIn content.
+"""OpenAI-powered helpers for LinkedIn post, comment, and calendar generation.
 
-This module provides functionality to generate LinkedIn posts and comments using OpenAI's API,
-with different perspectives and tones to make the content sound more natural and engaging.
+Why:
+    Centralise prompt engineering and client management so automation flows can
+    request AI content with one-liners.
+
+When:
+    Imported by the bot during initialisation when an ``OPENAI_API_KEY`` exists.
+
+How:
+    Instantiates a shared :class:`openai.OpenAI` client, defines request payloads,
+    and exposes convenience methods for posts, comments, and content calendars.
 """
 
 import logging
@@ -19,6 +26,21 @@ client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 
 @dataclass
 class ContentCalendarRequest:
+    """Structured payload describing a desired LinkedIn content calendar.
+
+    Why:
+        Prompts benefit from explicit field separation, and dataclasses provide
+        validation-friendly containers.
+
+    When:
+        Constructed by CLI handlers before calling
+        :meth:`OpenAIClient.generate_content_calendar`.
+
+    How:
+        Stores descriptive metadata such as niche, goal, audience, tone, and
+        optional inspiration fields used to craft the AI prompt.
+    """
+
     niche: str
     goal: str
     audience: str
@@ -32,16 +54,36 @@ class ContentCalendarRequest:
 
 
 class OpenAIClient:
-    """
-    Client for interacting with OpenAI's API to generate LinkedIn content.
+    """Wrapper around the OpenAI client tailored for LinkedIn content.
+
+    Why:
+        Encapsulate prompt templates and client defaults, reducing duplication.
+
+    When:
+        Instantiated by :class:`LinkedInBot` whenever OpenAI credentials are
+        available.
+
+    How:
+        Holds a reference to the shared :class:`OpenAI` client, stores style
+        templates, and exposes methods to craft posts, comments, and calendars.
     """
 
     def __init__(self, model: str = OPENAI_MODEL) -> None:
-        """
-        Initialize the OpenAI client.
+        """Initialise the wrapper with a preferred OpenAI model.
+
+        Why:
+            Allow callers to override model aliases (e.g., for testing or cost
+            control) without altering code elsewhere.
+
+        When:
+            Called during bot construction.
+
+        How:
+            Stores the chosen model name, references the shared client, and
+            prepares reusable style templates used by :meth:`generate_post`.
 
         Args:
-            model: The OpenAI model to use (defaults to value from config).
+            model (str): Name or alias of the OpenAI chat completion model to use.
         """
         self.model = model
         self.client = client
@@ -64,11 +106,32 @@ class OpenAIClient:
         temperature: float = 0.7,
         summarize_input: bool = True
     ) -> str:
-        """
-        Generate a LinkedIn post about a given topic with storytelling structure.
+        """Produce a LinkedIn post in Joseph's voice using OpenAI.
+
+        Why:
+            Provide high-quality, structured posts tailored to the user's brand.
+
+        When:
+            Called when automated topic runs prefer OpenAI over Gemini or local
+            templates.
+
+        How:
+            Optionally summarises long topics, selects a style template, crafts a
+            structured prompt, and requests a chat completion.
+
+        Args:
+            topic (str): Subject matter to cover.
+            style (str): Style template key controlling prompt flavour.
+            max_tokens (int): Token ceiling for the generated response.
+            temperature (float): Randomness setting for the completion.
+            summarize_input (bool): Whether to normalise lengthy topics first.
 
         Returns:
-            str: The generated LinkedIn post.
+            str: Generated LinkedIn post content.
+
+        Raises:
+            ValueError: If the OpenAI client is not initialised.
+            Exception: Propagates API errors for upstream handling.
         """
         if not self.client:
             raise ValueError("OpenAI client not initialized. Please set OPENAI_API_KEY in .env")
@@ -128,18 +191,32 @@ Rules:
         temperature: float = 0.7,
         summarize_input: bool = True
     ) -> str:
-        """
-        Generate a comment on a LinkedIn post from a specific perspective.
+        """Draft a conversational LinkedIn comment from a given perspective.
+
+        Why:
+            Engagement loops need authentic-sounding replies tailored to the
+            post's tone.
+
+        When:
+            Called by the engage stream whenever AI commenting is enabled.
+
+        How:
+            Optionally summarises long posts, selects a perspective-specific
+            instruction, and requests a concise chat completion.
 
         Args:
-            post_text: The text of the post to comment on
-            perspective: The tone/perspective for the comment ('funny', 'motivational', or 'insightful')
-            max_tokens: Maximum number of tokens to generate (default: 150)
-            temperature: Controls randomness (0.0-1.0, higher is more random, default: 0.7)
-            summarize_input: Whether to preprocess the input text if it's too long
+            post_text (str): Source post content.
+            perspective (Literal["funny", "motivational", "insightful"]): Desired
+                tone for the reply.
+            max_tokens (int): Token cap for the response.
+            temperature (float): Sampling temperature passed to OpenAI.
+            summarize_input (bool): Whether to trim long source posts.
 
         Returns:
-            str: The generated comment text
+            str: Generated comment, or a fallback message when errors occur.
+
+        Raises:
+            ValueError: If the OpenAI client is missing.
         """
         if not self.client:
             raise ValueError("OpenAI client not initialized. Please set OPENAI_API_KEY in .env")
@@ -210,7 +287,30 @@ Comment:"""
             return "Great post! Thanks for sharing."
 
     def generate_content_calendar(self, request: ContentCalendarRequest) -> str:
-        """Generate a structured content calendar using OpenAI."""
+        """Draft a LinkedIn content calendar based on user-supplied goals.
+
+        Why:
+            Help users plan multi-day content campaigns without manual drafting.
+
+        When:
+            Invoked by the CLI ``--generate-calendar`` workflow.
+
+        How:
+            Builds a detailed prompt describing niche, goals, tone, and optional
+            inspiration, then requests a chat completion that emits day-by-day
+            ideas.
+
+        Args:
+            request (ContentCalendarRequest): Structured description of the
+                desired calendar.
+
+        Returns:
+            str: AI-generated calendar text.
+
+        Raises:
+            ValueError: If the OpenAI client is not initialised.
+            Exception: Propagates API errors for caller handling.
+        """
 
         if not self.client:
             raise ValueError("OpenAI client not initialized. Please set OPENAI_API_KEY in .env")

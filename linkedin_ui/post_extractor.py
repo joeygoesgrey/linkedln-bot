@@ -1,4 +1,14 @@
-"""Utilities for extracting structured data from LinkedIn feed posts."""
+"""Utilities for extracting structured data from LinkedIn feed posts.
+
+Why:
+    Summaries and AI comments require clean, expanded post text.
+
+When:
+    Instantiated by :class:`LinkedInBot` for engage stream and other analyses.
+
+How:
+    Expands truncated sections and gathers visible text using Selenium queries.
+"""
 
 from __future__ import annotations
 
@@ -13,13 +23,45 @@ import config
 
 
 class PostExtractor:
-    """Best-effort helpers for reading visible post text and metadata."""
+    """Best-effort helpers for reading visible post text and metadata.
+
+    Why:
+        Keep text extraction logic in one place to simplify reuse and testing.
+
+    When:
+        Used before AI summarisation and comment generation.
+
+    How:
+        Uses Selenium waits and DOM traversals to expand "see more" sections and
+        gather text snippets.
+    """
 
     def __init__(self, driver) -> None:
+        """Store the Selenium driver used for post extraction.
+
+        Args:
+            driver (selenium.webdriver.Remote): Active WebDriver instance.
+        """
         self.driver = driver
 
     def extract_text(self, root) -> str:
-        """Return the visible text content for a post root element."""
+        """Return the visible text content for a post root element.
+
+        Why:
+            Engage AI and logging require the full textual content of a post.
+
+        When:
+            Called whenever text context is needed, such as before summarising.
+
+        How:
+            Expands "see more" sections, then gathers and trims text snippets.
+
+        Args:
+            root (WebElement): Post container element.
+
+        Returns:
+            str: Combined post text with surrounding whitespace trimmed.
+        """
         if root is None:
             return ""
         try:
@@ -36,7 +78,23 @@ class PostExtractor:
     # Internal helpers -----------------------------------------------------
 
     def _expand_truncated_sections(self, root) -> None:
-        """Click "See more" buttons within the post when they are present."""
+        """Expand truncated content by clicking "See more" buttons.
+
+        Why:
+            Ensures the extractor captures the complete post text.
+
+        When:
+            Invoked as part of :meth:`extract_text`.
+
+        How:
+            Searches for known expansion buttons and clicks them until no longer clickable.
+
+        Args:
+            root (WebElement): Post container element.
+
+        Returns:
+            None
+        """
         selectors = [
             ".//button[contains(@class,'see-more') and contains(@class,'inline-show-more-text__button')]",
             ".//span[contains(@class,'line-clamp-show-more-button')]",
@@ -59,6 +117,24 @@ class PostExtractor:
                 continue
 
     def _gather_text(self, root) -> str:
+        """Collect visible text snippets from a post into a single string.
+
+        Why:
+            Breaks down DOM traversal to a reusable helper for extraction.
+
+        When:
+            Called after expanding truncated sections.
+
+        How:
+            Iterates through known selectors for textual nodes, aggregates unique
+            snippets, and falls back to raw text when necessary.
+
+        Args:
+            root (WebElement): Post container element.
+
+        Returns:
+            str: Combined text truncated to ~1200 characters.
+        """
         text_parts: list[str] = []
         seen: set[str] = set()
         selectors: Iterable[str] = (

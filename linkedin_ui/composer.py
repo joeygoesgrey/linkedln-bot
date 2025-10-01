@@ -1,15 +1,15 @@
-"""
-Composer and posting helpers.
+"""Mix-in that automates the LinkedIn post composer, scheduling, and submission.
 
 Why:
-    Orchestrate the end-to-end post creation: open composer, type content,
-    insert mentions, attach media, and click Post.
+    Encapsulate brittle UI interactions (button discovery, mentions insertion,
+    scheduling modals) so higher-level workflows remain clean.
 
 When:
-    Primary entry `post_to_linkedin` is called by higher-level code.
+    Mixed into :class:`LinkedInInteraction` and invoked by posting workflows.
 
 How:
-    Uses robust selectors with retries, overlay dismissal, and post verification.
+    Provides helpers for opening the composer, populating text/mentions/media,
+    optionally scheduling, and verifying submission.
 """
 
 import platform
@@ -24,7 +24,43 @@ import config
 
 
 class ComposerMixin:
+    """Automate the LinkedIn composer, scheduling modal, and submission flow.
+
+    Why:
+        Posting requires numerous Selenium interactions that benefit from reuse.
+
+    When:
+        Mixed into :class:`LinkedInInteraction` to support post creation workflows.
+
+    How:
+        Supplies methods for opening the composer, typing content, inserting mentions, uploading media, and verifying results.
+    """
     def post_to_linkedin(self, post_text, image_paths=None, mentions=None, schedule_date=None, schedule_time=None):
+        """Publish a post via the LinkedIn composer modal.
+
+        Why:
+            Offer a single method that handles opening the composer, typing
+            content, inserting mentions, uploading media, and submitting the post.
+
+        When:
+            Called by :class:`LinkedInBot` during topic or custom-post flows.
+
+        How:
+            Navigates to the feed, dismisses overlays, opens the composer, writes
+            text (handling inline mentions), attaches media, optionally schedules
+            the post, submits via resilient click strategies, and verifies
+            success.
+
+        Args:
+            post_text (str): Content to publish.
+            image_paths (list[str] | None): Optional images to attach.
+            mentions (list[str] | None): Names for mention insertion helper.
+            schedule_date (str | None): Optional scheduling date.
+            schedule_time (str | None): Optional scheduling time.
+
+        Returns:
+            bool: ``True`` when the workflow appears successful, otherwise ``False``.
+        """
         try:
             logging.info("Posting to LinkedIn.")
             self.driver.get(config.LINKEDIN_FEED_URL)
@@ -119,6 +155,27 @@ class ComposerMixin:
             return False
 
     def _schedule_post(self, date_str: str, time_str: str) -> bool:
+        """Fill and submit the scheduling modal during post creation.
+
+        Why:
+            Allow automated posts to be scheduled for future publication without
+            manual UI interaction.
+
+        When:
+            Called within :meth:`post_to_linkedin` when both schedule fields are
+            provided.
+
+        How:
+            Opens the schedule modal, inputs the provided date and time using a
+            collection of selectors, and advances to the confirmation screen.
+
+        Args:
+            date_str (str): Date string formatted per LinkedIn requirements.
+            time_str (str): Time string formatted per LinkedIn requirements.
+
+        Returns:
+            bool: ``True`` if modal interactions succeed, ``False`` otherwise.
+        """
         try:
             # Click the Schedule post button in the composer footer
             schedule_btn_selectors = [
@@ -220,6 +277,21 @@ class ComposerMixin:
             return False
 
     def _click_schedule_confirm(self) -> bool:
+        """Click the final schedule confirmation button in the modal.
+
+        Why:
+            LinkedIn requires a second confirmation after selecting date/time.
+
+        When:
+            Called after :meth:`_schedule_post` completes successfully.
+
+        How:
+            Searches for schedule confirmation buttons across multiple selector
+            variants and clicks the first actionable one.
+
+        Returns:
+            bool: ``True`` when the confirmation button is clicked, otherwise ``False``.
+        """
         try:
             # Confirm by clicking a button labeled 'Schedule'
             for xp in [
@@ -240,6 +312,22 @@ class ComposerMixin:
         return False
 
     def _find_start_post_button(self):
+        """Locate the button that opens the LinkedIn post composer.
+
+        Why:
+            LinkedIn variants expose different DOM hooks; centralising discovery
+            keeps :meth:`post_to_linkedin` concise.
+
+        When:
+            Called immediately before opening the composer modal.
+
+        How:
+            Iterates through a list of XPath selectors, returning the first
+            clickable element.
+
+        Returns:
+            WebElement | None: Discovered button or ``None`` when not found.
+        """
         start_post_selectors = [
             "//div[contains(@class, 'share-box-feed-entry__top-bar')]",
             "//div[contains(@class, 'share-box-feed-entry__closed-share-box')]",
@@ -265,6 +353,22 @@ class ComposerMixin:
         return None
 
     def _find_post_editor(self):
+        """Return the contenteditable node inside the composer modal.
+
+        Why:
+            The editor's structure changes frequently; this helper abstracts the
+            search so callers simply receive the usable element.
+
+        When:
+            Called after the composer opens to type content.
+
+        How:
+            Tries several XPath selectors that match common editor signatures and
+            waits for the first present element.
+
+        Returns:
+            WebElement | None: Editor element when found, else ``None``.
+        """
         editor_selectors = [
             "//div[contains(@class, 'share-creation-state__editor-container')]//div[@role='textbox']",
             "//div[contains(@class, 'ql-editor')][contains(@data-gramm, 'false')]",
@@ -287,6 +391,22 @@ class ComposerMixin:
         return None
 
     def _find_post_button(self):
+        """Locate the actionable Post/Share button in the composer modal.
+
+        Why:
+            The button label/class differs depending on LinkedIn experiments;
+            this helper encapsulates all known variants.
+
+        When:
+            Called just before submitting the post.
+
+        How:
+            Optionally scopes the search to modal roots, iterates through known
+            selectors, and returns the first clickable button.
+
+        Returns:
+            WebElement | None: Button element if found, otherwise ``None``.
+        """
         modal_roots = [
             "//div[@role='dialog' and contains(@class, 'share-creation-state')]",
             "//div[@role='dialog' and contains(@class, 'share-box-modal')]",
@@ -356,6 +476,22 @@ class ComposerMixin:
         return None
 
     def _submit_via_keyboard(self):
+        """Attempt post submission using keyboard shortcuts.
+
+        Why:
+            Provides a fallback when clickable elements are obstructed or fail to
+            respond.
+
+        When:
+            Used after standard click attempts refuse to submit the post.
+
+        How:
+            Sends platform-specific submit shortcuts (Ctrl/Cmd + Enter) via
+            ActionChains.
+
+        Returns:
+            bool: ``True`` if the keystrokes execute without error, else ``False``.
+        """
         try:
             actions = ActionChains(self.driver)
             if platform.system() == "Darwin":
@@ -372,6 +508,22 @@ class ComposerMixin:
             return False
 
     def _click_post_via_js(self):
+        """Submit the post by executing JavaScript on candidate buttons.
+
+        Why:
+            Some experimental UIs block native clicks; executing JS provides a
+            last-resort submission path.
+
+        When:
+            Called when standard clicks and keyboard shortcuts fail.
+
+        How:
+            Runs a script that scans for candidate buttons within modals and
+            triggers ``click()`` on the first eligible element.
+
+        Returns:
+            bool: ``True`` when the script reports a click action, ``False`` otherwise.
+        """
         try:
             js = """
                 const modals = Array.from(document.querySelectorAll('div[role="dialog"]'));
@@ -396,6 +548,26 @@ class ComposerMixin:
             return False
 
     def _set_post_text(self, post_area, post_text):
+        """Populate the composer editor with the provided text.
+
+        Why:
+            Provide a single helper that handles both native typing and JS
+            fallbacks when ``send_keys`` fails (e.g., due to stale focus).
+
+        When:
+            Called during :meth:`post_to_linkedin` in the non-mention path.
+
+        How:
+            Attempts to use ``send_keys``; if it fails, injects the HTML content
+            via JavaScript.
+
+        Args:
+            post_area (WebElement): Editor element.
+            post_text (str): Content to write.
+
+        Returns:
+            bool: ``True`` on success, ``False`` otherwise.
+        """
         try:
             post_area.send_keys(post_text)
             logging.info("Sent text to editor using send_keys")

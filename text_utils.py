@@ -1,4 +1,17 @@
-"""Lightweight text helpers for AI preprocessing."""
+"""Lightweight helpers for normalising text prior to AI calls.
+
+Why:
+    Centralise whitespace and truncation logic to keep AI prompts lean while
+    avoiding repeated snippets across modules.
+
+When:
+    Imported anywhere the project needs to pre-process text before sending it
+    to an LLM.
+
+How:
+    Exposes small utilities such as :func:`preprocess_for_ai` that perform
+    trimming, summarisation by ratio, and character limits.
+"""
 
 from __future__ import annotations
 
@@ -11,13 +24,27 @@ def preprocess_for_ai(
     summarize_ratio: Optional[float] = None,
     max_chars: Optional[int] = None,
 ) -> str:
-    """Normalize whitespace and optionally truncate text before sending to an LLM.
+    """Normalise whitespace and optionally truncate strings for AI consumption.
+
+    Why:
+        Reducing noisy whitespace and long bodies keeps prompts concise and
+        within token limits.
+
+    When:
+        Applied prior to OpenAI/Gemini calls when raw input may contain excess
+        spacing or exceed configured limits.
+
+    How:
+        Coerces input to ``str``, collapses whitespace, trims by an optional
+        ratio, and enforces a maximum character count.
 
     Args:
-        text: Source text to clean.
-        summarize_ratio: Reserved for future summarisation support. When provided,
-            we simply keep the leading fraction of the content.
-        max_chars: Maximum characters to return.
+        text (str): Source text to clean.
+        summarize_ratio (float | None): Optional fraction of the text to retain.
+        max_chars (int | None): Hard character cap after cleaning.
+
+    Returns:
+        str: Normalised text ready for prompt use.
     """
     if not isinstance(text, str):
         text = str(text or "")

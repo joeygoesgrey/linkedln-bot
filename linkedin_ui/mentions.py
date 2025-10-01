@@ -1,18 +1,16 @@
-"""
-Mentions (people tagging) helpers.
+"""Mention insertion helpers for LinkedIn's composer popover.
 
 Why:
-    Resolve '@Name' into clickable mention entities by interacting with the
-    editor's typeahead and selecting an item.
+    Decouple brittle mention behaviour from the rest of the posting workflow.
 
 When:
-    During composition when inline placeholders are present or explicit
-    'mentions' are supplied.
+    Mixed into :class:`LinkedInInteraction` whenever inline placeholders or
+    explicit mention requests need to resolve to LinkedIn entities.
 
 How:
-    Types '@' + name with human-like delays, waits for suggestions, optionally
-    captures the typeahead DOM, then clicks the first/top result (or best text
-    match) and verifies a mention entity exists.
+    Types ``@`` sequences with human-like delays, waits for the popover,
+    optionally captures diagnostics, selects the best suggestion, and verifies
+    entity insertion.
 """
 
 import re
@@ -29,17 +27,89 @@ import config
 
 
 class MentionsMixin:
+    """Provide resilient mention insertion utilities for the composer/editor.
+
+    Why:
+        Centralise brittle mention logic so higher-level code remains concise.
+
+    When:
+        Mixed into :class:`LinkedInInteraction` whenever posts or comments need mentions.
+
+    How:
+        Offers helpers for sanitising names, detecting placeholders, inserting mentions, and verifying entities.
+    """
     def _sanitize_bmp(self, text: str) -> str:
+        """Remove non-BMP characters to keep typeahead input stable.
+
+        Why:
+            LinkedIn's mention popover can mis-handle characters beyond the
+            Basic Multilingual Plane; filtering them reduces risk.
+
+        When:
+            Right before simulating keystrokes for mention names.
+
+        How:
+            Iterates characters and retains only those with code points <= 0xFFFF.
+
+        Args:
+            text (str): Candidate string.
+
+        Returns:
+            str: Sanitised string safe for editor input.
+        """
+
         try:
             return "".join(ch for ch in str(text) if ord(ch) <= 0xFFFF)
         except Exception:
             return str(text or "")
+
     def _post_text_contains_inline_mentions(self, post_text):
+        """Detect ``@{Name}`` placeholders within supplied text.
+
+        Why:
+            Drives the decision to process inline mention tokens versus typing
+            text verbatim.
+
+        When:
+            Checked prior to composing post or comment content.
+
+        How:
+            Uses a regex search for ``@{...}`` patterns.
+
+        Args:
+            post_text (str): Text to inspect.
+
+        Returns:
+            bool: ``True`` if placeholders exist, otherwise ``False``.
+        """
+
         if not post_text:
             return False
         return bool(re.search(r"@\{[^}]+\}", post_text))
 
     def _compose_text_with_mentions(self, post_area, post_text):
+        """Type text segments while resolving inline mention placeholders.
+
+        Why:
+            Authors can specify mentions inline using ``@{Name}`` tokens; this
+            helper expands them into real entities.
+
+        When:
+            Called by posting/commenting flows when inline placeholders are
+            detected.
+
+        How:
+            Splits the text by placeholder boundaries, types plain segments, and
+            leverages :meth:`_insert_mentions` for each captured name.
+
+        Args:
+            post_area (WebElement): Editor element.
+            post_text (str): Content with zero or more placeholders.
+
+        Returns:
+            bool: ``True`` when composition succeeds, otherwise ``False``.
+        """
+
         if post_area is None:
             return False
         pattern = re.compile(r"@\{([^}]+)\}")
@@ -84,6 +154,32 @@ class MentionsMixin:
         force_end: bool = False,
         force_start: bool = False,
     ):
+        """Insert mention entities into the active editor.
+
+        Why:
+            Automating manual ``@`` typing improves reliability and enables
+            scripting of complex mention scenarios.
+
+        When:
+            Triggered by inline placeholders or explicit mention arguments.
+
+        How:
+            Focuses the editor, optionally repositions the caret, types ``@``
+            and the sanitised name with human delays, nudges the popover to
+            refresh, waits for suggestions, selects a candidate, verifies the
+            entity, and tidies whitespace.
+
+        Args:
+            post_area (WebElement): Editor element into which mentions are typed.
+            names (Iterable[str]): Display names to mention.
+            leading_space (bool): Whether to insert a space before ``@``.
+            force_end (bool): Force caret to the end before insertion.
+            force_start (bool): Force caret to the beginning before insertion.
+
+        Returns:
+            None
+        """
+
         if not names:
             return
         try:
@@ -186,12 +282,33 @@ class MentionsMixin:
                 logging.info(f"Mention insertion fallback for '{name}': {e}")
 
     def _cleanup_trailing_newline(self, post_area, attempts=2):
+        """Remove trailing newline characters introduced by mentions.
+
+        Why:
+            LinkedIn sometimes inserts newlines after selecting a mention; this
+            keeps formatting tidy.
+
+        When:
+            Called after each mention insertion attempt.
+
+        How:
+            Reads the editor text via JavaScript and issues backspaces while the
+            tail contains newline characters, up to ``attempts`` times.
+
+        Args:
+            post_area (WebElement): Editor under modification.
+            attempts (int): Maximum number of cleanup iterations.
+
+        Returns:
+            None
+        """
+
         try:
             for _ in range(max(1, attempts)):
                 txt = self.driver.execute_script(
                     "return (arguments[0].innerText||'').toString();", post_area
                 ) or ""
-            
+           
                 if not txt or not txt.endswith("\n"):
                     break
                 post_area.send_keys(Keys.BACKSPACE)
@@ -200,6 +317,26 @@ class MentionsMixin:
             pass
 
     def _wait_for_mention_suggestions(self, expected_text, timeout=None):
+        """Wait until the mention suggestion tray displays visible entries.
+
+        Why:
+            Ensures subsequent selection logic interacts with a populated popover.
+
+        When:
+            Immediately after typing the mention name.
+
+        How:
+            Polls multiple XPath selectors for visible items until the timeout
+            expires.
+
+        Args:
+            expected_text (str): The text typed into the mention popover.
+            timeout (float | None): Maximum wait time in seconds.
+
+        Returns:
+            bool: ``True`` if suggestions appear, otherwise ``False``.
+        """
+
         timeout = timeout or config.SHORT_TIMEOUT
         selectors = [
             "//div[contains(@class,'typeahead') and contains(@class,'artdeco')]//li",
@@ -234,6 +371,27 @@ class MentionsMixin:
         return False
 
     def _capture_typeahead_snapshot(self, typed_text=None):
+        """Persist the current typeahead DOM/metadata for diagnostics.
+
+        Why:
+            Debugging mention regressions benefits from captured HTML/JSON to
+            compare against expected structures.
+
+        When:
+            Called opportunistically when ``CAPTURE_TYPEAHEAD_HTML`` is enabled.
+
+        How:
+            Locates the popover container, serialises its HTML and visible items
+            via JavaScript, and writes timestamped files to the capture directory.
+
+        Args:
+            typed_text (str | None): Text typed into the popover, used for
+                naming captured artifacts.
+
+        Returns:
+            None
+        """
+
         try:
             capture_dir = Path(config.TYPEAHEAD_CAPTURE_DIR)
             capture_dir.mkdir(parents=True, exist_ok=True)
@@ -309,6 +467,28 @@ class MentionsMixin:
             logging.debug(f"Typeahead capture error: {e}")
 
     def _verify_mention_entity(self, post_area, name, timeout=None):
+        """Confirm that a selected mention rendered as a LinkedIn entity.
+
+        Why:
+            Ensures automation does not leave raw ``@`` text when the popover
+            fails to select an entity.
+
+        When:
+            Invoked immediately after attempting to pick a suggestion.
+
+        How:
+            Searches for mention-related classes in the DOM and, failing that,
+            executes JavaScript scans to detect entity markers.
+
+        Args:
+            post_area (WebElement): Editor containing the mention.
+            name (str): Expected mention display name.
+            timeout (float | None): Seconds to poll for confirmation.
+
+        Returns:
+            bool: ``True`` when a mention entity is found, otherwise ``False``.
+        """
+
         timeout = timeout or config.SHORT_TIMEOUT
         end_time = time.time() + timeout
         safe_name = (name or "").strip()
@@ -353,6 +533,29 @@ class MentionsMixin:
         return False
 
     def _select_first_mention_suggestion(self, post_area, expected_name=None, prefer_first=False):
+        """Choose a mention suggestion and click it.
+
+        Why:
+            Abstracts the logic for selecting either the first visible entry or
+            the best textual match from the suggestion list.
+
+        When:
+            Called once suggestions are confirmed to be visible.
+
+        How:
+            Optionally prefers the first suggestion, otherwise sorts candidates
+            by similarity score before attempting to click via native or JS
+            events.
+
+        Args:
+            post_area (WebElement): Editor element, used for context.
+            expected_name (str | None): Name to favour when scoring candidates.
+            prefer_first (bool): Whether to always pick the first suggestion.
+
+        Returns:
+            bool: ``True`` when a suggestion is clicked, otherwise ``False``.
+        """
+
         # Prefer clicking the first visible suggestion inside the tray
         if prefer_first:
             try:
@@ -406,6 +609,23 @@ class MentionsMixin:
             try:
                 items = self.driver.find_elements(By.XPATH, sel)
                 def score(el):
+                    """Compute a ranking score comparing a suggestion to the expected name.
+
+                    Why:
+                        Ensures the automation selects the closest textual match when not preferring the first result.
+
+                    When:
+                        Called while sorting suggestion elements prior to clicking.
+
+                    How:
+                        Normalises text to lowercase and assigns higher scores for exact matches, prefixes, and substring matches.
+
+                    Args:
+                        el (WebElement): Suggestion element to evaluate.
+
+                    Returns:
+                        int: Priority score (higher is better).
+                    """
                     try:
                         t = (el.text or "").strip().lower()
                         exp = (expected_name or "").strip().lower()

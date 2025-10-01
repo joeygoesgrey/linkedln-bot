@@ -1,4 +1,16 @@
-"""Dataclasses that capture engage-stream runtime state."""
+"""Dataclasses representing engage-stream configuration and runtime state.
+
+Why:
+    Provide typed containers for passing configuration and outcomes between
+    mixins and executors.
+
+When:
+    Instantiated prior to and during engage-stream execution.
+
+How:
+    Leverage the Python dataclass decorator to define lightweight, mutable
+    structures.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +20,18 @@ from typing import Any, Dict, List, Optional, Set
 
 @dataclass
 class EngageContext:
-    """Holds per-run configuration and mutable state for the engage loop."""
+    """Hold configuration and mutable state for an engage-stream session.
+
+    Why:
+        Consolidate CLI inputs, runtime counters, and caches into one object.
+
+    When:
+        Created prior to executing the engage loop and mutated during runtime.
+
+    How:
+        Stores both configuration values (mode, delays) and sets/dicts tracking
+        processed posts, liked/commented URNs, and persisted state.
+    """
 
     mode: str
     comment_text: Optional[str]
@@ -39,15 +62,27 @@ class EngageContext:
 
     @property
     def ai_enabled(self) -> bool:
+        """Whether AI-assisted commenting is configured for the session."""
         return self.ai_client is not None
 
 
 @dataclass
 class CommentPlan:
-    """Represents the decision on how to comment on a single post."""
+    """Describe whether and how to comment on a specific post.
+
+    Why:
+        Separates decision logic from execution, making it easier to test and
+        inspect comment choices.
+
+    When:
+        Created per post during :meth:`EngageExecutor._prepare_comment_plan`.
+
+    How:
+        Holds the final comment text, chosen perspective, author name, and skip
+        reason (if any).
+    """
 
     text: Optional[str]
     perspective: Optional[str]
     author_name: Optional[str]
     skip_reason: Optional[str] = None
-

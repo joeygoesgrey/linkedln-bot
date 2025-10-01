@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
-"""
-LinkedIn Bot Main Entry Point
+"""LinkedIn bot command-line entry point.
 
-This script is the main entry point for the LinkedIn automation bot.
-It parses command-line arguments and initiates the bot with appropriate options.
+Why:
+    Consolidate posting, scheduling, image attachment, engagement, and
+    calendar-generation flows into a single executable interface.
+
+When:
+    Run directly via ``python main.py`` or import :func:`main` from other tooling
+    that must drive the automation pipeline programmatically.
+
+How:
+    Defines the CLI parser, configures logging/runtime switches, instantiates
+    :class:`LinkedInBot`, and dispatches to the requested workflow before
+    returning an exit status.
 """
 
 import os
@@ -20,11 +29,24 @@ from openai_client import ContentCalendarRequest, OpenAIClient
 
 
 def setup_argument_parser():
-    """
-    Set up the command-line argument parser.
-    
+    """Construct and configure the bot's CLI argument parser.
+
+    Why:
+        Keeping every workflow flag in one builder avoids drift between
+        documentation and implementation and simplifies future maintenance.
+
+    When:
+        Called at process start before arguments are parsed; reusable by external
+        tooling that needs an identical parser instance.
+
+    How:
+        Instantiates :class:`argparse.ArgumentParser`, registers grouped
+        arguments for topics, content calendars, media uploads, feed actions, and
+        engage stream controls, then returns the configured parser.
+
     Returns:
-        argparse.ArgumentParser: Configured argument parser
+        argparse.ArgumentParser: Parser populated with every supported command
+        line option for the automation suite.
     """
     parser = argparse.ArgumentParser(
         description="LinkedIn automation bot for posting content.",
@@ -290,13 +312,25 @@ def setup_argument_parser():
 
 
 def main():
-    """
-    Main entry point for the LinkedIn Bot.
-    
-    Parses command line arguments, configures logging, and runs the bot.
-    
+    """Execute the automation workflow selected via CLI options.
+
+    Why:
+        Acts as the single control room that interprets user intent, wires
+        dependencies, and invokes the appropriate high-level routine.
+
+    When:
+        Called automatically when the module runs as a script or manually by
+        external processes coordinating multi-step automations.
+
+    How:
+        Builds the parser, obtains arguments, configures logging and runtime
+        toggles, instantiates :class:`LinkedInBot`, and branches into calendar
+        generation, direct feed actions, engage stream, or posting flows before
+        closing the bot and returning a status code.
+
     Returns:
-        int: Exit code (0 for success, non-zero for errors)
+        int: ``0`` on success, ``1`` (or another non-zero value) when a failure
+        occurs during setup or execution.
     """
     # Parse command-line arguments
     parser = setup_argument_parser()
@@ -350,6 +384,27 @@ def main():
             return 1
 
         def _split_values(values):
+            """Flatten potentially comma-delimited arguments into a clean list.
+
+            Why:
+                Calendar flags accept repeated usage as well as comma-separated
+                values, so normalising input ensures downstream constructors can
+                treat them uniformly.
+
+            When:
+                Invoked while preparing `content_types` and `hashtags` before
+                building the :class:`ContentCalendarRequest` payload.
+
+            How:
+                Iterates over raw strings, splits on commas, strips whitespace,
+                and filters out empties before returning the aggregated list.
+
+            Args:
+                values (list[str] | None): Raw values captured by argparse.
+
+            Returns:
+                list[str]: Cleaned tokens ready for calendar generation.
+            """
             results = []
             for raw in values or []:
                 parts = [part.strip() for part in raw.split(",")]

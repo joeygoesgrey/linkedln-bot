@@ -29,7 +29,20 @@ from .engage_utils import normalize_perspectives
 
 
 class EngageStreamMixin(EngageDomMixin):
-    """High-level orchestration for engage-stream entry point."""
+    """Coordinate the engage-stream workflow across DOM and flow helpers.
+
+    Why:
+        Encapsulate parameter validation, context building, and executor wiring
+        so callers only supply CLI-style arguments.
+
+    When:
+        Mixed into :class:`LinkedInInteraction` and invoked by engage workflow
+        entry points.
+
+    How:
+        Validates inputs, builds an :class:`EngageContext`, instantiates
+        :class:`EngageExecutor`, and delegates execution.
+    """
 
     def engage_stream(
         self,
@@ -50,7 +63,40 @@ class EngageStreamMixin(EngageDomMixin):
         ai_max_tokens: int = 180,
         post_extractor=None,
     ) -> bool:
-        """Engage the feed by liking/commenting posts until limits are reached."""
+        """Run the engage stream loop with optional AI-powered commenting.
+
+        Why:
+            Automates lightweight engagement to boost visibility without manual
+            scrolling.
+
+        When:
+            Called by CLI flows when `--engage-stream` is provided.
+
+        How:
+            Logs context headers, validates arguments, builds an
+            :class:`EngageContext`, and executes via :class:`EngageExecutor`.
+
+        Args:
+            mode (str): Engagement mode (`like`, `comment`, or `both`).
+            comment_text (str | None): Static comment text when AI is disabled.
+            max_actions (int): Maximum number of actions to perform.
+            include_promoted (bool): Whether to include promoted posts.
+            delay_min (float | None): Minimum delay between actions.
+            delay_max (float | None): Maximum delay between actions.
+            mention_author (bool): Whether to mention the author in comments.
+            mention_position (str): Placement of the author mention token.
+            infinite (bool): Whether to ignore ``max_actions``.
+            scroll_wait_min (float | None): Minimum scroll wait.
+            scroll_wait_max (float | None): Maximum scroll wait.
+            ai_client: Optional AI client for generating comments.
+            ai_perspectives (list[str] | None): Preferred comment perspectives.
+            ai_temperature (float): Temperature for AI comments.
+            ai_max_tokens (int): Token limit for AI comments.
+            post_extractor: Optional post text extractor helper.
+
+        Returns:
+            bool: ``True`` on success, ``False`` when validation or execution fails.
+        """
         normalized_mode = (mode or "").strip().lower()
         self._log_engage_header(normalized_mode, infinite)
 
@@ -93,6 +139,25 @@ class EngageStreamMixin(EngageDomMixin):
     # Support methods
 
     def _log_engage_header(self, mode: str, infinite: bool) -> None:
+        """Emit run metadata for logging and debugging.
+
+        Why:
+            Provide clear logs for operators monitoring engage behaviour.
+
+        When:
+            Called at the start of :meth:`engage_stream`.
+
+        How:
+            Logs hardened build info and infinite scroll status.
+
+        Args:
+            mode (str): Engagement mode.
+            infinite (bool): Whether infinite scrolling is enabled.
+
+        Returns:
+            None
+        """
+
         try:
             logging.info("ENGAGE_HARDENED v2025.09-1 active | order=comment-then-like | ttl=7d")
         except Exception:
@@ -104,6 +169,27 @@ class EngageStreamMixin(EngageDomMixin):
                 pass
 
     def _validate_engage_arguments(self, mode: str, comment_text: Optional[str], ai_client) -> bool:
+        """Check engage-stream arguments for completeness and compatibility.
+
+        Why:
+            Prevents runtime errors by surfacing misconfigurations early.
+
+        When:
+            Immediately after logging headers within :meth:`engage_stream`.
+
+        How:
+            Validates the mode, ensures comment text is provided when required,
+            and logs when AI is enabled.
+
+        Args:
+            mode (str): Engagement mode.
+            comment_text (str | None): Static fallback comment text.
+            ai_client: Optional AI client to generate comments.
+
+        Returns:
+            bool: ``True`` when arguments pass validation, ``False`` otherwise.
+        """
+
         if mode not in {"like", "comment", "both"}:
             logging.error("engage_stream mode must be one of: like | comment | both")
             return False
@@ -141,6 +227,41 @@ class EngageStreamMixin(EngageDomMixin):
         ai_max_tokens: int,
         post_extractor,
     ) -> EngageContext:
+        """Assemble an :class:`EngageContext` from CLI-style arguments.
+
+        Why:
+            Normalises inputs and applies defaults before passing state to the
+            executor.
+
+        When:
+            Called inside :meth:`engage_stream` after validation.
+
+        How:
+            Applies defaults, coerces optional values, and returns a populated
+            dataclass instance.
+
+        Args:
+            mode (str): Engagement mode.
+            comment_text (str | None): Static comment text.
+            max_actions (int): Maximum action count.
+            include_promoted (bool): Whether to include promoted posts.
+            delay_min (float | None): Minimum delay override.
+            delay_max (float | None): Maximum delay override.
+            mention_author (bool): Whether to mention the author.
+            mention_position (str): Author mention placement.
+            infinite (bool): Run indefinitely flag.
+            scroll_wait_min (float | None): Minimum scroll wait.
+            scroll_wait_max (float | None): Maximum scroll wait.
+            ai_client: AI client for comment generation.
+            ai_perspectives (list[str] | None): Comment perspectives.
+            ai_temperature (float): Comment temperature.
+            ai_max_tokens (int): Comment token limit.
+            post_extractor: Helper for extracting post text.
+
+        Returns:
+            EngageContext: Prepared context for :class:`EngageExecutor`.
+        """
+
         force_prepend = bool(ai_client)
 
         return EngageContext(
@@ -168,6 +289,27 @@ class EngageStreamMixin(EngageDomMixin):
         min_override: Optional[float] = None,
         max_override: Optional[float] = None,
     ) -> None:
+        """Sleep for a random interval respecting the context's delay bounds.
+
+        Why:
+            Keeps engagement pacing human-like and adjustable via CLI flags.
+
+        When:
+            Called between like/comment actions by :class:`EngageExecutor`.
+
+        How:
+            Resolves overrides or defaults from context, clamps values, and
+            sleeps for a uniform random duration.
+
+        Args:
+            context (EngageContext): Current engagement context.
+            min_override (float | None): Optional minimum override.
+            max_override (float | None): Optional maximum override.
+
+        Returns:
+            None
+        """
+
         min_seconds = min_override if min_override is not None else context.delay_min
         max_seconds = max_override if max_override is not None else context.delay_max
         high = max(min_seconds, max_seconds)
