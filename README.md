@@ -9,6 +9,7 @@ This Python project opens a real Chromium/Chrome browser, signs into LinkedIn, a
 - [4. Common Workflows](#4-common-workflows)
 - [5. Engage Stream Safety & De-duplication](#5-engage-stream-safety--de-duplication)
 - [6. AI Notes](#6-ai-notes)
+  - [Bot in Action](#bot-in-action)
 - [7. Configuration Reference](#7-configuration-reference)
 - [8. Safety Checklist](#8-safety-checklist)
 - [9. Project Structure](#9-project-structure)
@@ -207,6 +208,13 @@ Troubleshooting duplicates:
 - **Token billing**: everything you send (including spaces and line breaks) counts as tokens.
 - **Fallbacks**: if OpenAI/Gemini fail, the bot falls back to `CUSTOM_POSTS_FILE` templates, then to randomised phrases.
 
+### Bot in Action
+
+[![LinkedIn post authored by the bot](static/linkedln%20image.png)](https://www.linkedin.com/feed/update/urn:li:share:7378393785791156224)
+
+> Click the image to open the live LinkedIn post that was created by this automation.
+
+
 ### Documentation & Introspection
 
 - Every module, class, and function now ships with Why/When/How docstrings so you can `help()` anything in the stack and understand intent quickly.
@@ -298,9 +306,8 @@ Security-sensitive findings should be reported privately (see
 
 ## 12. License
 
-This project is released under the [LinkedIn Bot Community License](LICENSE.md).
-Personal, educational, and research use is free. Commercial deployments require
-obtaining a written agreement with the original author, including offering the
-author the first right of refusal for paid work on the commercial product.
+This project is released under the [MIT License](LICENSE.md). You are free to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the software, subject to the license terms.
 
 Stay safe, automate responsibly, and enjoy reclaiming your time on LinkedIn!
