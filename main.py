@@ -16,6 +16,7 @@ from pathlib import Path
 
 import config
 from linkedin_bot import LinkedInBot
+from openai_client import ContentCalendarRequest, OpenAIClient
 
 
 def setup_argument_parser():
@@ -34,6 +35,76 @@ def setup_argument_parser():
         "--topics-file", 
         default=config.DEFAULT_TOPIC_FILE,
         help="Path to a text file containing post topics, one per line. If missing, falls back to built-in templates."
+    )
+
+    # Content calendar generation (topics helper)
+    parser.add_argument(
+        "--generate-calendar",
+        action="store_true",
+        help="Generate a content calendar and write it to the topics file instead of posting."
+    )
+    parser.add_argument(
+        "--calendar-niche",
+        default=None,
+        help="Industry or niche for the content calendar (e.g., fitness, SaaS)."
+    )
+    parser.add_argument(
+        "--calendar-goal",
+        default=None,
+        help="Primary content goal (e.g., brand awareness, educate, promote)."
+    )
+    parser.add_argument(
+        "--calendar-audience",
+        default=None,
+        help="Description of the target audience (age, profession, challenges)."
+    )
+    parser.add_argument(
+        "--calendar-tone",
+        default="professional",
+        help="Desired voice or tone for the posts (e.g., inspirational, humorous)."
+    )
+    parser.add_argument(
+        "--calendar-content-type",
+        action="append",
+        default=None,
+        help="Preferred content formats (repeat or comma-separate, e.g., tips, storytelling)."
+    )
+    parser.add_argument(
+        "--calendar-frequency",
+        default="daily posts",
+        help="Posting frequency description (e.g., daily posts, three times per week)."
+    )
+    parser.add_argument(
+        "--calendar-total-posts",
+        type=int,
+        default=30,
+        help="Total number of posts to generate for the calendar (default 30)."
+    )
+    parser.add_argument(
+        "--calendar-hashtag",
+        action="append",
+        default=None,
+        help="Hashtags or keywords to emphasise (repeat or comma-separate)."
+    )
+    parser.add_argument(
+        "--calendar-inspiration",
+        default=None,
+        help="Competitors or creators the user admires."
+    )
+    parser.add_argument(
+        "--calendar-personal-story",
+        default=None,
+        help="Personal stories or insights to weave into the plan."
+    )
+    parser.add_argument(
+        "--calendar-output",
+        default=None,
+        help="Optional path for the generated calendar (defaults to --topics-file)."
+    )
+    parser.add_argument(
+        "--calendar-overwrite",
+        action="store_true",
+        help="Overwrite the output file instead of appending."
     )
     
     parser.add_argument(
@@ -249,12 +320,85 @@ def main():
         logging.info(f"Images directory: {args.images_dir}")
     elif args.no_images:
         logging.info("Image uploads disabled")
-    
-    # If topics file is missing, continue with fallbacks
+
     topics_file_to_use = args.topics_file
     if not Path(args.topics_file).exists():
-        logging.warning(f"Topics file not found: {args.topics_file}. Falling back to built-in templates.")
+        logging.warning(
+            f"Topics file not found: {args.topics_file}. Falling back to built-in templates."
+        )
         topics_file_to_use = None
+
+    # Handle content calendar generation and exit early if requested
+    if args.generate_calendar:
+        if not config.OPENAI_API_KEY:
+            logging.error(
+                "OpenAI API key is required for content calendar generation."
+            )
+            return 1
+
+        required_fields = {
+            "--calendar-niche": args.calendar_niche,
+            "--calendar-goal": args.calendar_goal,
+            "--calendar-audience": args.calendar_audience,
+        }
+        missing = [flag for flag, value in required_fields.items() if not value or not value.strip()]
+        if missing:
+            logging.error(
+                "Missing required options for calendar generation: %s",
+                ", ".join(missing),
+            )
+            return 1
+
+        def _split_values(values):
+            results = []
+            for raw in values or []:
+                parts = [part.strip() for part in raw.split(",")]
+                results.extend([part for part in parts if part])
+            return results
+
+        content_types = _split_values(args.calendar_content_type)
+        hashtags = _split_values(args.calendar_hashtag)
+        calendar_request = ContentCalendarRequest(
+            niche=args.calendar_niche.strip(),
+            goal=args.calendar_goal.strip(),
+            audience=args.calendar_audience.strip(),
+            tone=(args.calendar_tone or "professional").strip(),
+            content_types=content_types,
+            frequency=(args.calendar_frequency or "daily posts").strip(),
+            total_posts=max(1, args.calendar_total_posts),
+            hashtags=hashtags,
+            inspiration=(args.calendar_inspiration or None),
+            personal_story=(args.calendar_personal_story or None),
+        )
+
+        client = OpenAIClient()
+        try:
+            calendar_text = client.generate_content_calendar(calendar_request)
+        except Exception:
+            logging.error("Failed to generate content calendar", exc_info=True)
+            return 1
+
+        lines = [line.strip() for line in calendar_text.splitlines() if line.strip()]
+        if not lines:
+            logging.error("Calendar generation returned empty text")
+            return 1
+
+        output_path = Path(args.calendar_output) if args.calendar_output else Path(args.topics_file)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        mode = "w" if args.calendar_overwrite else "a"
+        previous_size = output_path.stat().st_size if output_path.exists() else 0
+        with open(output_path, mode, encoding="utf-8") as f:
+            if mode == "a" and previous_size > 0:
+                f.write("\n")
+            f.write("\n".join(lines))
+            f.write("\n")
+
+        logging.info(
+            "Content calendar with %d entries written to %s",
+            len(lines),
+            output_path,
+        )
+        return 0
     
     # Validate images directory if provided
     if args.images_dir and not args.no_images:
