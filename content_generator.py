@@ -184,7 +184,7 @@ class ContentGenerator:
                 text = tpl.format(topic=topic)
                 if len(text) > config.MAX_POST_LENGTH:
                     text = text[: config.MAX_POST_LENGTH - 3].rstrip() + "..."
-                return text
+                return self._append_marketing_blurb(text)
             except Exception as e:
                 logging.debug(f"Custom template render failed, using randomized: {e}")
 
@@ -227,8 +227,35 @@ class ContentGenerator:
         )
         if len(post) > config.MAX_POST_LENGTH:
             post = post[: config.MAX_POST_LENGTH - 3].rstrip() + "..."
-        return post or (default_post or f"Sharing a few thoughts on {topic} today.")
-    
+        final_post = post or (default_post or f"Sharing a few thoughts on {topic} today.")
+        return self._append_marketing_blurb(final_post)
+
+    def _append_marketing_blurb(self, text: str) -> str:
+        """Append a marketing CTA for the open-source project when enabled.
+
+        Why:
+            Keeps the bot consistently promoting the linked repository.
+
+        When:
+            Called after generating any post content (AI or local fallback).
+
+        How:
+            Appends a short CTA with project context and URL unless the text
+            already contains the URL or marketing mode is disabled.
+
+        Args:
+            text (str): Post content to augment.
+
+        Returns:
+            str: Augmented content including the marketing CTA when enabled.
+        """
+        if not text or not config.MARKETING_MODE:
+            return text
+        if config.PROJECT_URL in text:
+            return text.strip()
+        tagline = f"🔗 Explore {config.PROJECT_NAME}: {config.PROJECT_TAGLINE}"
+        return f"{text.strip()}\n\n{tagline}"
+
     def remove_markdown(self, text, ignore_hashtags=False):
         """Strip markdown syntax while optionally preserving hashtags.
 
@@ -349,7 +376,7 @@ class ContentGenerator:
                 if post_response and hasattr(post_response, 'text'):
                     post_text = self.remove_markdown(post_response.text, ignore_hashtags=True)
                     logging.info("Successfully generated post content with Gemini API")
-                    return post_text
+                    return self._append_marketing_blurb(post_text)
                 else:
                     logging.warning("Received invalid response from Gemini API, using local fallback content")
             else:

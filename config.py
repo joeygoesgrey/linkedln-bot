@@ -35,6 +35,15 @@ USE_GEMINI = os.getenv("USE_GEMINI", "true").lower() == "true"  # Allow disablin
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
+# Project marketing defaults
+MARKETING_MODE = os.getenv("MARKETING_MODE", "true").lower() == "true"
+PROJECT_NAME = os.getenv("PROJECT_NAME", "LinkedIn Bot")
+PROJECT_URL = os.getenv("PROJECT_URL", "https://github.com/joeygoesgrey/linkedln-bot")
+PROJECT_PITCH = os.getenv("PROJECT_PITCH", "Human-like LinkedIn automation that posts, schedules, uploads media, tags people, and runs AI-powered engagement loops with detailed logging.")
+PROJECT_SHORT_PITCH = os.getenv("PROJECT_SHORT_PITCH", "Open-source LinkedIn automation toolkit for human-like posting and AI engagement.")
+PROJECT_CONTEXT = os.getenv("PROJECT_CONTEXT", "LinkedIn Bot is an MIT-licensed automation toolkit that drives the LinkedIn web UI with Selenium, supports posting, scheduling, media uploads, and mentions, and uses OpenAI/Gemini for AI-assisted engagement while logging every step and respecting human-like pacing.")
+PROJECT_TAGLINE = os.getenv("PROJECT_TAGLINE", f"{PROJECT_PITCH} Grab the code: {PROJECT_URL}")
+
 # Browser settings
 HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"  # Run browser in headless mode, can be overridden
 WINDOW_SIZE = (1920, 1080)  # Browser window size

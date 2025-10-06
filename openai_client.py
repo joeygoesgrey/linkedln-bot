@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import List, Literal, Optional
 from openai import OpenAI
 
+import config
 from config import OPENAI_API_KEY, OPENAI_MODEL
 from text_utils import preprocess_for_ai
 
@@ -98,6 +99,24 @@ class OpenAIClient:
             "inspirational": "Be motivational and uplifting, focusing on big-picture impact."
         }
 
+    def _append_marketing_tail(self, text: str) -> str:
+        """Append a promotional tail encouraging readers to explore the project.
+
+        Args:
+            text (str): Generated OpenAI text (post, comment, or fallback).
+
+        Returns:
+            str: Text with a promotional tail when marketing mode is enabled.
+        """
+        if not isinstance(text, str):
+            return text
+        if not text or not config.MARKETING_MODE:
+            return text.strip()
+        if config.PROJECT_URL in text:
+            return text.strip()
+        tail = f"PS: Check out {config.PROJECT_NAME} – {config.PROJECT_SHORT_PITCH} {config.PROJECT_URL}"
+        return f"{text.strip()} {tail}".strip()
+
     def generate_post(
         self,
         topic: str,
@@ -142,8 +161,11 @@ class OpenAIClient:
         style_instruction = self.style_templates.get(style, self.style_templates["professional"])
 
         PROMPT_TEMPLATE = """
-You are Joseph Edomobi (joeygoesgrey), a Nigerian full-stack developer and entrepreneur. 
+You are Joseph Edomobi (joeygoesgrey), a Nigerian full-stack developer and entrepreneur.
 Write a LinkedIn post about "{topic}" in a {style} style.
+
+Project context you should weave in naturally:
+{project_context}
 
 Follow this structure:
 1. **Hook** → A bold, curiosity-driven first line (e.g., "How I...", "How to... without...", "Imagine if...").
@@ -155,15 +177,24 @@ Follow this structure:
 
 Rules:
 - Write at a 6th–7th grade reading level.
-- Short sentences. No jargon. 
+- Short sentences. No jargon.
 - Conversational tone. Sound human, not corporate.
 - Keep it under 300 words.
 - Do not use emojis unless natural.
 - Hashtags should not be generic like #JoinTheRevolution. Prefer niche tags (e.g., #AIinHealthcare).
-    
+- Include a friendly CTA inviting readers to explore {project_name}, the open-source toolkit that {project_pitch}. Add the link {project_url} near the end without sounding spammy.
+
 {style_instruction}
 """
-        prompt = PROMPT_TEMPLATE.format(topic=topic, style=style, style_instruction=style_instruction)
+        prompt = PROMPT_TEMPLATE.format(
+            topic=topic,
+            style=style,
+            style_instruction=style_instruction,
+            project_name=config.PROJECT_NAME,
+            project_pitch=config.PROJECT_PITCH,
+            project_url=config.PROJECT_URL,
+            project_context=config.PROJECT_CONTEXT,
+        )
 
         try:
             response = self.client.chat.completions.create(
@@ -178,7 +209,8 @@ Rules:
                 frequency_penalty=0.3,
                 presence_penalty=0.3
             )
-            return response.choices[0].message.content.strip()
+            generated = response.choices[0].message.content.strip()
+            return self._append_marketing_tail(generated)
         except Exception as e:
             logging.error(f"Error generating post with OpenAI: {str(e)}")
             raise
@@ -235,10 +267,13 @@ Rules:
                 max_chars=300
             )
 
-        COMMENT_PROMPT_TEMPLATE = """Write a LinkedIn comment in response to this post. 
+        COMMENT_PROMPT_TEMPLATE = """Write a LinkedIn comment in response to this post.
 
 Post content:
 {post_text}
+
+Project context you can reference:
+{project_context}
 
 Guidelines:
 - Tone: {perspective_instruction}
@@ -248,11 +283,16 @@ Guidelines:
 - Sound like a real human, not AI-generated
 - Add value to the conversation
 - Be specific and relevant to the post
+- After addressing the post, include a short CTA inviting readers to explore {project_name}, {project_short_pitch} ({project_url}). Keep it friendly and under 20 words.
 
 Comment:"""
         prompt = COMMENT_PROMPT_TEMPLATE.format(
             post_text=processed_text,
-            perspective_instruction=perspective_map[perspective]
+            perspective_instruction=perspective_map[perspective],
+            project_name=config.PROJECT_NAME,
+            project_short_pitch=config.PROJECT_SHORT_PITCH,
+            project_url=config.PROJECT_URL,
+            project_context=config.PROJECT_CONTEXT,
         )
 
         try:
@@ -278,13 +318,18 @@ Comment:"""
             comment = response.choices[0].message.content.strip()
             comment = comment.strip('"\'').strip()
 
+            if comment:
+                comment = self._append_marketing_tail(comment)
+            else:
+                comment = self._append_marketing_tail("Great post! Thanks for sharing.")
+
             logging.info(f"Generated {perspective} comment with {len(comment)} characters")
 
-            return comment if comment else "Great post! Thanks for sharing."
+            return comment
 
         except Exception as e:
             logging.error(f"Error generating comment: {e}")
-            return "Great post! Thanks for sharing."
+            return self._append_marketing_tail("Great post! Thanks for sharing.")
 
     def generate_content_calendar(self, request: ContentCalendarRequest) -> str:
         """Draft a LinkedIn content calendar based on user-supplied goals.
