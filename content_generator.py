@@ -1,8 +1,15 @@
-"""
-Content generation module for the LinkedIn Bot.
+"""Content generation helpers leveraging Gemini with graceful fallbacks.
 
-This module handles all content generation functionality, including integration with
-the Google Gemini API for AI-generated post content and fallback content templates.
+Why:
+    Centralise AI prompts, local templates, and fallback logic so posting flows
+    can focus on composing LinkedIn UI interactions.
+
+When:
+    Instantiated during bot setup whenever auto-generated content is required.
+
+How:
+    Configures Gemini, loads local templates, and exposes methods to generate
+    posts, strip markdown, and request content calendars.
 """
 
 import os
@@ -15,25 +22,54 @@ import config
 
 
 class ContentGenerator:
-    """
-    Handles the generation of content for LinkedIn posts using Google's Gemini API
-    and provides fallback templates when the API is unavailable.
+    """Generate LinkedIn-ready copy using Gemini or local fallbacks.
+
+    Why:
+        Maintain a consistent tone and structure without duplicating prompt
+        logic across call sites.
+
+    When:
+        Created alongside :class:`LinkedInBot` and reused for each post.
+
+    How:
+        Configures Gemini, caches default and custom templates, and exposes
+        helpers for producing AI or locally generated post text.
     """
     
     def __init__(self):
-        """
-        Initialize the ContentGenerator with API configuration and fallback templates.
+        """Prepare API configuration and cached templates.
+
+        Why:
+            Avoid repeating configuration steps and file reads for every
+            generated post.
+
+        When:
+            Instantiated once per bot session.
+
+        How:
+            Calls :meth:`_setup_api`, loads default template corpus, and reads
+            any user-provided custom templates from disk.
         """
         self._setup_api()
         self._default_posts = self._get_default_templates()
         self._custom_posts = self._load_custom_posts(config.CUSTOM_POSTS_FILE)
         
     def _setup_api(self):
-        """
-        Set up the Gemini API configuration using the API key from environment.
-        
+        """Configure the Gemini client if an API key is present.
+
+        Why:
+            Allows the bot to fall back gracefully when credentials are absent
+            instead of failing at runtime.
+
+        When:
+            Executed during :meth:`__init__`.
+
+        How:
+            Reads :data:`config.GEMINI_API_KEY`, calls ``genai.configure`` when
+            available, logs failures, and returns a boolean success flag.
+
         Returns:
-            bool: True if API setup was successful, False otherwise.
+            bool: ``True`` when configuration succeeds, ``False`` otherwise.
         """
         try:
             # Get the API key from config
@@ -50,11 +86,21 @@ class ContentGenerator:
             return False
             
     def _get_default_templates(self):
-        """
-        Get default post templates for different topics.
-        
+        """Provide curated default templates across common professional topics.
+
+        Why:
+            Ensure the bot still produces sensible content when AI is disabled
+            or unavailable.
+
+        When:
+            Loaded during initialisation and used as a lookup when topic keywords
+            match the template keys.
+
+        How:
+            Returns a dictionary mapping topic keywords to prewritten copy.
+
         Returns:
-            dict: Dictionary mapping topics to template posts.
+            dict[str, str]: Topic keyword to template text mapping.
         """
         return {
             "leadership": "Leadership isn't just about guiding teams—it's about inspiring innovation, fostering growth, and building resilience through challenges. Today I'm reflecting on how authentic leadership creates lasting impact in our rapidly evolving professional landscape. What leadership qualities do you value most? #LeadershipInsights #ProfessionalGrowth",
@@ -75,15 +121,24 @@ class ContentGenerator:
         }
     
     def _load_custom_posts(self, path):
-        """
-        Load custom fallback post templates from a file if present.
-        Each line is treated as a template; supports `{topic}` placeholder.
+        """Load user-supplied fallback templates from disk.
+
+        Why:
+            Enable bespoke tone or branding when Gemini is disabled or to seed
+            the random generator.
+
+        When:
+            Invoked during :meth:`__init__` when ``CUSTOM_POSTS_FILE`` is set.
+
+        How:
+            Reads the file, strips blank lines, and returns a list of template
+            strings supporting ``{topic}`` placeholders.
 
         Args:
-            path (str): Path to a custom posts file.
+            path (str): Absolute or relative path to the templates file.
 
         Returns:
-            list[str]: List of template strings.
+            list[str]: Cleaned template strings ready for formatting.
         """
         try:
             if not path:
@@ -101,16 +156,25 @@ class ContentGenerator:
             return []
     
     def _generate_local_post(self, topic, default_post=None):
-        """
-        Generate a local post without AI. Prefers custom templates if provided,
-        otherwise composes a randomized post from phrase sets.
+        """Synthesize a post using templates or randomized phrase fragments.
+
+        Why:
+            Maintain automation utility even without networked AI services.
+
+        When:
+            Used whenever Gemini is disabled, misconfigured, or raises an error.
+
+        How:
+            Prefers user-provided templates, otherwise combines phrase pools into
+            a short narrative and truncates to LinkedIn's character limit.
 
         Args:
-            topic (str): Topic to include.
-            default_post (str): Optional default post to fall back to.
+            topic (str): Subject to weave into the post text.
+            default_post (str | None): Fallback string if template selection
+                fails.
 
         Returns:
-            str: Locally generated post text.
+            str: Generated content ready for posting.
         """
         # 1) Use a custom template if available
         if getattr(self, "_custom_posts", None):
@@ -120,7 +184,7 @@ class ContentGenerator:
                 text = tpl.format(topic=topic)
                 if len(text) > config.MAX_POST_LENGTH:
                     text = text[: config.MAX_POST_LENGTH - 3].rstrip() + "..."
-                return text
+                return self._append_marketing_blurb(text)
             except Exception as e:
                 logging.debug(f"Custom template render failed, using randomized: {e}")
 
@@ -163,18 +227,56 @@ class ContentGenerator:
         )
         if len(post) > config.MAX_POST_LENGTH:
             post = post[: config.MAX_POST_LENGTH - 3].rstrip() + "..."
-        return post or (default_post or f"Sharing a few thoughts on {topic} today.")
-    
-    def remove_markdown(self, text, ignore_hashtags=False):
-        """
-        Removes markdown syntax from a given text string.
-        
+        final_post = post or (default_post or f"Sharing a few thoughts on {topic} today.")
+        return self._append_marketing_blurb(final_post)
+
+    def _append_marketing_blurb(self, text: str) -> str:
+        """Append a marketing CTA for the open-source project when enabled.
+
+        Why:
+            Keeps the bot consistently promoting the linked repository.
+
+        When:
+            Called after generating any post content (AI or local fallback).
+
+        How:
+            Appends a short CTA with project context and URL unless the text
+            already contains the URL or marketing mode is disabled.
+
         Args:
-            text (str): The markdown text to process.
-            ignore_hashtags (bool): If True, preserve hashtags in the text.
-            
+            text (str): Post content to augment.
+
         Returns:
-            str: The processed text with markdown syntax removed.
+            str: Augmented content including the marketing CTA when enabled.
+        """
+        if not text or not config.MARKETING_MODE:
+            return text
+        if config.PROJECT_URL in text:
+            return text.strip()
+        tagline = f"🔗 Explore {config.PROJECT_NAME}: {config.PROJECT_TAGLINE}"
+        return f"{text.strip()}\n\n{tagline}"
+
+    def remove_markdown(self, text, ignore_hashtags=False):
+        """Strip markdown syntax while optionally preserving hashtags.
+
+        Why:
+            Gemini responses may include markdown; LinkedIn's editor expects
+            plain text.
+
+        When:
+            Applied to generated content before sending it to the composer.
+
+        How:
+            Uses regex patterns to replace markdown elements with whitespace and
+            trims the result.
+
+        Args:
+            text (str): Source text that may contain markdown.
+            ignore_hashtags (bool): Preserve heading markers (useful when
+                headings double as hashtags).
+
+        Returns:
+            str: Sanitised text suitable for LinkedIn.
         """
         patterns = [
             r"(\*{1,2})(.*?)\1",  # Bold and italics
@@ -200,14 +302,24 @@ class ContentGenerator:
         return text.strip()
 
     def generate_post_content(self, topic):
-        """
-        Generate a LinkedIn post about the given topic using Google's Gemini API.
-        
+        """Produce LinkedIn-ready copy for a given topic.
+
+        Why:
+            Automate ideation while matching LinkedIn best practices and tone.
+
+        When:
+            Called by workflows needing fresh content for a topic run.
+
+        How:
+            Attempts to match the topic to a default template, uses Gemini when
+            enabled, and falls back to local generation when AI is unavailable or
+            errors occur.
+
         Args:
-            topic (str): The topic to generate content about.
-            
+            topic (str): Subject or keyword describing the desired post.
+
         Returns:
-            str: The generated post content.
+            str: Generated content trimmed to LinkedIn limits.
         """
         logging.info(f"Generating post content for topic: {topic}")
         
@@ -264,7 +376,7 @@ class ContentGenerator:
                 if post_response and hasattr(post_response, 'text'):
                     post_text = self.remove_markdown(post_response.text, ignore_hashtags=True)
                     logging.info("Successfully generated post content with Gemini API")
-                    return post_text
+                    return self._append_marketing_blurb(post_text)
                 else:
                     logging.warning("Received invalid response from Gemini API, using local fallback content")
             else:
@@ -277,11 +389,22 @@ class ContentGenerator:
             return self._generate_local_post(topic, default_post)
     
     def _select_gemini_model(self):
-        """
-        Select the best available Gemini model for content generation.
-        
+        """Determine which Gemini model to use for generation calls.
+
+        Why:
+            Model availability changes; picking the best allowed model maximises
+            quality while remaining resilient to deprecations.
+
+        When:
+            Invoked inside :meth:`generate_post_content` before making API calls.
+
+        How:
+            Lists available models, prioritises preferred names, looks for any
+            text-capable alternative, and finally falls back to hardcoded names.
+
         Returns:
-            str: The selected model name or None if no suitable model was found.
+            str | None: Fully qualified model identifier or ``None`` if none are
+            usable.
         """
         try:
             # List available models
@@ -341,17 +464,29 @@ class ContentGenerator:
             return "gemini-pro"  # Fallback to a common model name
             
     def _call_gemini_api_with_retries(self, client, messages, max_retries=3, base_delay=5):
-        """
-        Call the Gemini API with exponential backoff retry mechanism.
-        
+        """Invoke the Gemini API with exponential backoff.
+
+        Why:
+            Gemini may rate-limit; retrying transparently improves success rates
+            without burdening callers.
+
+        When:
+            Used when generating content via Gemini within this class.
+
+        How:
+            Attempts the request up to ``max_retries`` times, applying an
+            exponential delay on 429 errors, and returns the first successful
+            response.
+
         Args:
-            client (genai.GenerativeModel): The Gemini client instance.
-            messages (list): The messages to send to the API.
-            max_retries (int): Maximum number of retries.
-            base_delay (int): Base delay in seconds for backoff.
-            
+            client (genai.GenerativeModel): Configured Gemini client.
+            messages (list[dict]): Prompt parts for generation.
+            max_retries (int): Maximum number of attempts before giving up.
+            base_delay (int): Initial delay (seconds) for backoff.
+
         Returns:
-            object: The API response or None if all retries failed.
+            object | None: Gemini response object when successful, otherwise
+            ``None``.
         """
         retry_count = 0
         

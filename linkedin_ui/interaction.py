@@ -34,8 +34,17 @@ class LinkedInInteraction(
     EngageStreamMixin,
     BaseInteraction,
 ):
-    """
-    High-level LinkedIn UI automation wrapper (modular).
+    """High-level LinkedIn UI automation wrapper composing specialised mixins.
+
+    Why:
+        Present a unified interface for login, posting, mentions, media, feed
+        actions, and engagement.
+
+    When:
+        Instantiated by :class:`LinkedInBot` during automation runs.
+
+    How:
+        Inherits behaviour from mixins and the base interaction utility class.
     """
 
     pass

@@ -1,8 +1,17 @@
-"""
-Configuration settings and constants for the LinkedIn bot.
+"""Centralised configuration for the LinkedIn automation bot.
 
-This module centralizes all configuration parameters and constants used throughout
-the application, making it easier to modify settings in one place.
+Why:
+    Keep secrets, selectors, runtime toggles, and logging conventions in a
+    single module so the rest of the codebase can import consistent defaults.
+
+When:
+    Imported at startup by CLI scripts, automation classes, and helper modules
+    needing environment-derived values or shared constants.
+
+How:
+    Loads environment variables via ``python-dotenv``, exposes typed constants
+    for credentials, AI settings, Selenium timeouts, and logging, and provides
+    helper functions for safe casting and logging configuration.
 """
 
 import os
@@ -25,6 +34,15 @@ USE_GEMINI = os.getenv("USE_GEMINI", "true").lower() == "true"  # Allow disablin
 # OpenAI settings (used for feed engagement commentary)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+# Project marketing defaults
+MARKETING_MODE = os.getenv("MARKETING_MODE", "true").lower() == "true"
+PROJECT_NAME = os.getenv("PROJECT_NAME", "LinkedIn Bot")
+PROJECT_URL = os.getenv("PROJECT_URL", "https://github.com/joeygoesgrey/linkedln-bot")
+PROJECT_PITCH = os.getenv("PROJECT_PITCH", "Human-like LinkedIn automation that posts, schedules, uploads media, tags people, and runs AI-powered engagement loops with detailed logging.")
+PROJECT_SHORT_PITCH = os.getenv("PROJECT_SHORT_PITCH", "Open-source LinkedIn automation toolkit for human-like posting and AI engagement.")
+PROJECT_CONTEXT = os.getenv("PROJECT_CONTEXT", "LinkedIn Bot is an MIT-licensed automation toolkit that drives the LinkedIn web UI with Selenium, supports posting, scheduling, media uploads, and mentions, and uses OpenAI/Gemini for AI-assisted engagement while logging every step and respecting human-like pacing.")
+PROJECT_TAGLINE = os.getenv("PROJECT_TAGLINE", f"{PROJECT_PITCH} Grab the code: {PROJECT_URL}")
 
 # Browser settings
 HEADLESS = os.getenv("HEADLESS", "true").lower() == "true"  # Run browser in headless mode, can be overridden
@@ -59,12 +77,56 @@ ENABLE_TEXT_PREPROCESSING = os.getenv("ENABLE_TEXT_PREPROCESSING", "false").lowe
 SUMMARIZE_INPUT = os.getenv("SUMMARIZE_INPUT", "false").lower() == "true"
 
 def _safe_float(value: str | None, default: float) -> float:
+    """Convert an environment value to ``float`` with a resilient fallback.
+
+    Why:
+        Environment configuration often arrives as strings; this helper avoids
+        repetitive try/except blocks throughout the module.
+
+    When:
+        Used during module import when computing float-based settings such as
+        summarisation ratios.
+
+    How:
+        Attempts to cast ``value`` to ``float`` and returns ``default`` when the
+        value is ``None`` or malformed.
+
+    Args:
+        value (str | None): Raw environment string to convert.
+        default (float): Fallback value when conversion fails.
+
+    Returns:
+        float: Converted number or the provided default.
+    """
+
     try:
         return float(value)
     except (TypeError, ValueError):
         return default
 
+
 def _safe_int(value: str | None, default: int) -> int:
+    """Convert an environment value to ``int`` with a resilient fallback.
+
+    Why:
+        Many runtime limits (token counts, char caps) are numeric but configured
+        as strings; this helper standardises conversion and error handling.
+
+    When:
+        Called during module initialisation while populating integer constants.
+
+    How:
+        Attempts to cast ``value`` to ``int`` and returns ``default`` when the
+        cast fails or the value is ``None``.
+
+    Args:
+        value (str | None): Raw environment string to convert.
+        default (int): Fallback to use when conversion fails.
+
+    Returns:
+        int: Converted integer or the provided default.
+    """
+
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -118,11 +180,23 @@ DEFAULT_LOG_LEVEL = logging.INFO
 DEFAULT_LOG_FORMAT = "%(asctime)s - %(levelname)s - %(message)s"
 
 def configure_logging(log_level=None):
-    """
-    Configure the logging system with the specified log level.
+    """Initialise console and file logging for the automation suite.
+
+    Why:
+        Consistent logging is critical for diagnosing flaky UI interactions.
+        Centralising setup ensures every script emits structured output.
+
+    When:
+        Called on module import with defaults and invoked again by the CLI
+        entrypoint when the user requests ``--debug`` verbosity.
+
+    How:
+        Ensures the logs directory exists, creates a timestamped log file, and
+        configures :mod:`logging` handlers for both file and stdout streams.
 
     Args:
-        log_level (int, optional): The logging level to use. Defaults to INFO if not specified.
+        log_level (int | None): Explicit logging level; defaults to
+            :data:`DEFAULT_LOG_LEVEL` when ``None``.
 
     Returns:
         None

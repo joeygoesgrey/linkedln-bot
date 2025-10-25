@@ -23,7 +23,37 @@ import config
 
 
 class MediaMixin:
+    """Handle media attachment flows within the LinkedIn composer.
+
+    Why:
+        Uploading images involves hidden inputs and confirmation steps that are easy to break.
+
+    When:
+        Mixed into :class:`LinkedInInteraction` to support posts with media attachments.
+
+    How:
+        Provides helpers to open the media tray, locate file inputs, send paths, and confirm uploads.
+    """
     def upload_images_to_post(self, image_paths):
+        """Attach images to the current post using the LinkedIn media dialog.
+
+        Why:
+            Automating image uploads enables richer posts without manual steps.
+
+        When:
+            Called after text is composed when images are supplied.
+
+        How:
+            Opens the media tray, locates file inputs, sends absolute paths,
+            waits for previews, and handles post-upload confirmation buttons.
+
+        Args:
+            image_paths (Iterable[str]): Absolute or relative image paths to upload.
+
+        Returns:
+            bool: ``True`` on success, ``False`` when uploads fail.
+        """
+
         if not image_paths:
             logging.info("No images provided for upload, skipping")
             return True
@@ -98,6 +128,23 @@ class MediaMixin:
             return False
 
     def _find_photo_button(self):
+        """Locate the button that opens the media selector within the composer.
+
+        Why:
+            Different LinkedIn variants expose various selectors; this helper
+            encapsulates them all.
+
+        When:
+            Called before attempting file uploads.
+
+        How:
+            Searches both global and modal-scoped selectors, returning the first
+            enabled button.
+
+        Returns:
+            WebElement | None: Media button if found, otherwise ``None``.
+        """
+
         photo_button_selectors = [
             "button.share-box-feed-entry-toolbar__item[aria-label='Add a photo']",
             "button.image-detour-btn",
@@ -154,6 +201,23 @@ class MediaMixin:
         return None
 
     def _find_file_input(self):
+        """Discover the hidden file input backing LinkedIn's media uploader.
+
+        Why:
+            Selenium cannot interact with native dialogs; we must send file paths
+            directly to the hidden input.
+
+        When:
+            Invoked before sending image paths.
+
+        How:
+            Searches modal roots for input elements using a series of selectors
+            and returns the first match.
+
+        Returns:
+            WebElement | None: File input element if located.
+        """
+
         logging.info("Finding file input element...")
         modal_roots = [
             "//div[@role='dialog' and contains(@class,'share-box-v2__modal')]",
@@ -378,6 +442,22 @@ class MediaMixin:
         return None
 
     def _handle_post_upload_buttons(self):
+        """Click follow-up buttons shown after media uploads.
+
+        Why:
+            The media modal may require confirmation (e.g., "Done" or "Next")
+            to finalise attachments.
+
+        When:
+            Invoked after detecting preview thumbnails for uploaded media.
+
+        How:
+            Iterates through selector variants to locate actionable buttons,
+            clicks them using fallback strategies, and logs failures silently.
+
+        Returns:
+            bool: ``True`` if a button was handled or none were required.
+        """
         buttons_selectors = [
             "button.share-box-footer__primary-btn:not([disabled])",
             "button.artdeco-button--primary:not([disabled])",

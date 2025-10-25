@@ -1,4 +1,15 @@
-"""Utility helpers shared across engage-stream logic."""
+"""Utility helpers shared across engage-stream logic.
+
+Why:
+    Provide reusable calculations (delays, perspective normalisation, text
+    summarisation) used by multiple engage components.
+
+When:
+    Imported primarily by :mod:`linkedin_ui.engage` and :mod:`engage_flow`.
+
+How:
+    Exposes standalone functions to keep the main modules lean.
+"""
 
 from __future__ import annotations
 
@@ -12,7 +23,24 @@ from sumy.summarizers.text_rank import TextRankSummarizer
 
 
 def pause_between(min_seconds: float, max_seconds: float) -> None:
-    """Sleep for a human-like random interval between two bounds."""
+    """Sleep for a random interval within the provided bounds.
+
+    Why:
+        Simulate human delay between actions, reducing bot detection risk.
+
+    When:
+        Used by engage flows where a temporary pause is needed outside of class methods.
+
+    How:
+        Chooses a uniform random number between the min/max, clamped to positive values.
+
+    Args:
+        min_seconds (float): Lower bound for the sleep interval.
+        max_seconds (float): Upper bound for the sleep interval.
+
+    Returns:
+        None
+    """
 
     high = max(min_seconds, max_seconds)
     low = min(min_seconds, max_seconds)
@@ -20,7 +48,23 @@ def pause_between(min_seconds: float, max_seconds: float) -> None:
 
 
 def normalize_perspectives(perspectives: Optional[List[str]]) -> List[str]:
-    """Expand CLI-provided perspective values into canonical names."""
+    """Normalise perspective labels to recognised values.
+
+    Why:
+        Accepts friendly aliases (`perspective`) and ensures downstream logic receives canonical names.
+
+    When:
+        Called when building the engage context.
+
+    How:
+        Returns defaults when the list is empty and replaces ``"perspective"`` with ``"insightful"``.
+
+    Args:
+        perspectives (list[str] | None): Perspectives supplied by CLI callers.
+
+    Returns:
+        list[str]: Normalised perspective names.
+    """
 
     if not perspectives:
         return ["funny", "motivational", "insightful"]
@@ -31,7 +75,24 @@ def normalize_perspectives(perspectives: Optional[List[str]]) -> List[str]:
 
 
 def choose_ai_perspective(perspectives: List[str]) -> str:
-    """Select a random perspective keyword from the allowed list."""
+    """Pick a random perspective token from allowed values.
+
+    Why:
+        Introduces variation in AI-generated comments to avoid repetition.
+
+    When:
+        Called before requesting AI comment text.
+
+    How:
+        Filters the provided list to the allowed set and chooses randomly,
+        defaulting to the allowed set when necessary.
+
+    Args:
+        perspectives (list[str]): Candidate perspective names.
+
+    Returns:
+        str: Perspective string to embed in AI prompts.
+    """
 
     allowed = ["funny", "motivational", "insightful"]
     pool = [p for p in perspectives if p in allowed] or allowed
@@ -39,7 +100,25 @@ def choose_ai_perspective(perspectives: List[str]) -> str:
 
 
 def summarize_post_text(text: str, sentences: int = 3) -> Optional[str]:
-    """Return a condensed version of `text` using Sumy's TextRank summarizer."""
+    """Condense lengthy post text using Sumy's TextRank summariser.
+
+    Why:
+        Keeps AI prompt size manageable while retaining key ideas.
+
+    When:
+        Used before generating AI comments when posts exceed heuristics for length.
+
+    How:
+        Runs Sumy's TextRank summariser when text is longer than the threshold,
+        falling back to whitespace-normalised text on failure.
+
+    Args:
+        text (str): Source post content.
+        sentences (int): Target number of sentences for the summary.
+
+    Returns:
+        str | None: Condensed text or ``None`` when input is empty.
+    """
 
     if not text:
         return None
