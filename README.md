@@ -53,6 +53,7 @@ Add `--headless=false` the first few runs so you can watch what’s happening. A
 | AI summariser | Sumy condenses posts and logs the full summary before OpenAI writes a reply. |
 | Human-like delays | Control pace with `--delay-min/max` and `--scroll-wait-min/max`. |
 | Safety guards | Avoid duplicate comments/likes using URNs, hashes, DOM markers, and cached state. |
+| **Marketing mode** | Automatically append promotional tails to AI-generated posts/comments with your project details. |
 
 ---
 
@@ -71,6 +72,12 @@ Add `--headless=false` the first few runs so you can watch what’s happening. A
    GEMINI_API_KEY=your_gemini_key       # optional (AI posts)
    HEADLESS=true                        # default; override per run
    USE_GEMINI=true
+   
+   # Marketing Mode (optional)
+   MARKETING_MODE=true                  # Append promotional tails to AI content
+   PROJECT_NAME=LinkedIn Bot
+   PROJECT_URL=https://github.com/joeygoesgrey/linkedln-bot
+   PROJECT_SHORT_PITCH=Human-like Selenium automation for LinkedIn
    ```
 
 3. **Run with help**

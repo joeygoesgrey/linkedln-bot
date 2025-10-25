@@ -256,7 +256,7 @@ def setup_argument_parser():
         "--stream-perspective",
         action="append",
         choices=["funny", "motivational", "insightful", "perspective"],
-        default="insightful",
+        default=None,
         help="Perspective for AI comments (repeat to provide multiple).",
     )
     parser.add_argument(
