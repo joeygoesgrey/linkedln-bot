@@ -145,6 +145,20 @@ python main.py \
   --author-mention-position append
 ```
 
+### Pursue a specific profile (like & comment directly on their posts)
+```bash
+python main.py pursue "Lara Acosta" \
+  --max-posts 5 \
+  --perspectives insightful professional \
+  --bio-keywords investor venture startup advisor \
+  --debug --headless=false
+```
+- Finds the profile via search (optionally filtering by `--bio-keywords`).
+- Clicks **Show all posts** to open the `recent-activity/all` view.
+- Scrolls the profile’s posts feed, liking and (optionally) commenting on the first `--max-posts` visible items without navigating away.
+- Comments use AI when an OpenAI key is configured; otherwise fall back to the default text. Mentions of the author are prepended automatically.
+- Respect LinkedIn rate limits—start with small caps (e.g., `--max-posts 3`) while observing in headful mode.
+
 ### Generate a 30-day content calendar
 ```bash
 python main.py \

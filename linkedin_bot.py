@@ -469,3 +469,126 @@ class LinkedInBot:
             logging.info("Driver session ended cleanly.")
         except Exception as e:
             logging.error(f"Error closing driver: {e}")
+
+
+    def pursue_investor(
+        self,
+        profile_name: str,
+        max_posts: int = 5,
+        should_follow: bool = True,
+        should_like: bool = True,
+        should_comment: bool = True,
+        comment_perspectives: Optional[List[str]] = None,
+        bio_keywords: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """Pursue and engage with a specific person's profile.
+        
+        Args:
+            profile_name: Name of the person to engage with
+            max_posts: Maximum number of posts to engage with
+            should_follow: Whether to follow the profile
+            should_like: Whether to like posts
+            should_comment: Whether to comment on posts
+            comment_perspectives: List of perspectives for AI comments
+                
+        Returns:
+            Dict containing results and any errors
+        """
+        results = {
+            'profile': profile_name,
+            'followed': False,
+            'posts_engaged': 0,
+            'likes_given': 0,
+            'comments_made': 0,
+            'errors': []
+        }
+        
+        try:
+            # Search for the profile with bio keywords
+            logging.info(f"Searching for profile: {profile_name}")
+            if bio_keywords:
+                logging.info(f"Looking for bio containing: {', '.join(bio_keywords)}")
+                
+            profile_url = self.linkedin.search_profile(
+                profile_name,
+                bio_keywords=bio_keywords
+            )
+            
+            if not profile_url:
+                raise ValueError(f"Could not find matching profile for {profile_name}")
+                
+            # Navigate to profile
+            logging.info(f"Navigating to profile: {profile_url}")
+            self.linkedin.driver.get(profile_url)
+            time.sleep(3)  # Wait for profile to load
+
+            # Follow the profile if requested
+            if should_follow:
+                try:
+                    if self.linkedin.follow_profile():
+                        results['followed'] = True
+                        logging.info(f"Successfully followed {profile_name}")
+                except Exception as e:
+                    error_msg = f"Failed to follow profile: {str(e)}"
+                    results['errors'].append(error_msg)
+                    logging.error(error_msg)
+            
+            # Engage directly on the profile's posts page
+            logging.info(f"Opening profile posts view and engaging up to {max_posts} posts")
+            if not self.linkedin.open_profile_posts_view():
+                logging.warning("Could not confirm profile posts view; continuing with current page")
+
+            comment_generator = None
+            if should_comment:
+                def build_comment(post_root):  # type: ignore[return-type]
+                    base_text = "Great post! Thanks for sharing."
+                    if self.openai_client:
+                        try:
+                            post_text = self.post_extractor.extract_text(post_root)
+                        except Exception:
+                            post_text = ""
+                        if post_text:
+                            try:
+                                perspective = self._get_random_perspective(
+                                    comment_perspectives or ["insightful", "motivational", "funny"]
+                                )
+                                return self.openai_client.generate_comment(
+                                    post_text=post_text,
+                                    perspective=perspective,
+                                    max_tokens=180,
+                                    temperature=0.7,
+                                )
+                            except Exception as err:
+                                logging.error(f"AI comment generation failed: {err}")
+                    return base_text
+                comment_generator = build_comment
+
+            engagement = self.linkedin.engage_profile_posts(
+                max_posts=max_posts,
+                should_like=should_like,
+                should_comment=should_comment,
+                comment_generator=comment_generator,
+                mention_author=True,
+                mention_position='prepend',
+            )
+
+            results['posts_engaged'] = engagement.get('posts_engaged', 0)
+            results['likes_given'] = engagement.get('likes', 0)
+            results['comments_made'] = engagement.get('comments', 0)
+            if engagement.get('errors'):
+                results['errors'].extend(engagement['errors'])
+            logging.info(
+                "Profile engagement summary: posts=%s likes=%s comments=%s skipped=%s",
+                results['posts_engaged'],
+                results['likes_given'],
+                results['comments_made'],
+                engagement.get('skipped', 0),
+            )
+
+            return results
+
+        except Exception as e:
+            error_msg = f"Error pursuing investor {profile_name}: {str(e)}"
+            results['errors'].append(error_msg)
+            logging.error(error_msg, exc_info=True)
+            return results

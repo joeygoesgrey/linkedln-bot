@@ -21,7 +21,7 @@ from .verify import VerifyMixin
 from .composer import ComposerMixin
 from .feed_actions import FeedActionsMixin
 from .engage import EngageStreamMixin
-
+from .profile_actions import ProfileActionsMixin
 
 class LinkedInInteraction(
     LoginMixin,
@@ -33,6 +33,7 @@ class LinkedInInteraction(
     FeedActionsMixin,
     EngageStreamMixin,
     BaseInteraction,
+    ProfileActionsMixin,
 ):
     """High-level LinkedIn UI automation wrapper composing specialised mixins.
 
